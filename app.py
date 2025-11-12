@@ -108,20 +108,29 @@ def setup_database():
             print(f"  [DB {i+1}/5] Tabela OK.")
         
         # --- SEED INICIAL (Admin Padrão) ---
-        cur.execute("SELECT COUNT(*) FROM suagrafica_admin")
+        cur.execute("SELECT COUNT(*) FROM suagrafica_admin WHERE username = 'leanttro'")
         if cur.fetchone()[0] == 0:
-             # Usuário: admin | Senha: 123 (Em texto puro, para bater com a lógica de login do seu JS)
-             cur.execute("INSERT INTO suagrafica_admin (username, chave_admin) VALUES (%s, %s)", ('admin', '123'))
-             print("✅ [DB] Admin padrão (admin/123) criado.")
-             
-             # Seed de 1 Cliente e 1 Produto para teste
-             cur.execute("SELECT id FROM suagrafica_admin LIMIT 1")
-             admin_id = cur.fetchone()[0]
-             cur.execute("INSERT INTO suagrafica_clientes (admin_id, nome_cliente, cnpj, codigo_acesso) VALUES (%s, %s, %s, %s)",
-                         (admin_id, 'Cliente Teste S.A', '00.000.000/0001-00', 'CLIENTE123'))
-             cur.execute("INSERT INTO suagrafica_produtos (codigo_produto, nome_produto, preco_minimo, multiplos_de) VALUES (%s, %s, %s, %s)",
-                         ('ER1458-AZU', 'CANETA METAL AZUL', 2.10, 50))
-             print("✅ [DB] Dados de teste (Cliente e Produto) criados.")
+             # Usuário: leanttro | Senha: 12345 (CORRIGIDO para as credenciais do usuário)
+             cur.execute("INSERT INTO suagrafica_admin (username, chave_admin) VALUES (%s, %s)", ('leanttro', '12345'))
+             print("✅ [DB] Admin padrão (leanttro/12345) criado.")
+        
+        # Garante que o ID do admin seja usado para os dados de teste
+        cur.execute("SELECT id FROM suagrafica_admin WHERE username = 'leanttro' LIMIT 1")
+        admin_id_fetch = cur.fetchone()
+        if admin_id_fetch:
+            admin_id = admin_id_fetch[0]
+
+            # Seed de 1 Cliente e 1 Produto para teste (Verifica se já existem)
+            cur.execute("SELECT COUNT(*) FROM suagrafica_clientes WHERE codigo_acesso = 'CLIENTE123'")
+            if cur.fetchone()[0] == 0:
+                 cur.execute("INSERT INTO suagrafica_clientes (admin_id, nome_cliente, cnpj, codigo_acesso) VALUES (%s, %s, %s, %s)",
+                             (admin_id, 'Cliente Teste S.A', '00.000.000/0001-00', 'CLIENTE123'))
+            
+            cur.execute("SELECT COUNT(*) FROM suagrafica_produtos WHERE codigo_produto = 'ER1458-AZU'")
+            if cur.fetchone()[0] == 0:
+                cur.execute("INSERT INTO suagrafica_produtos (codigo_produto, nome_produto, preco_minimo, multiplos_de) VALUES (%s, %s, %s, %s)",
+                            ('ER1458-AZU', 'CANETA METAL AZUL', 2.10, 50))
+                print("✅ [DB] Dados de teste (Cliente e Produto) verificados/criados.")
 
         conn.commit()
         print("✅ [DB] Arquitetura B2B pronta.")
@@ -155,7 +164,7 @@ def login_admin():
     try:
         cur = conn.cursor()
         
-        # Lógica de login simples (comparando texto puro, como no seu app.py original)
+        # Lógica de login simples (comparando texto puro)
         cur.execute("SELECT id FROM suagrafica_admin WHERE username = %s AND chave_admin = %s", (username, chave_admin))
         admin = cur.fetchone()
         

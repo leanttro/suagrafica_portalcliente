@@ -10,13 +10,14 @@
     <style>
         /* --- TEMA CORPORATE DARK (Baseado no seu Portfólio) --- */
         :root {
-            --background: #0F172A; /* Slate 900 */
-            --surface: #1E293B; /* Slate 800 */
-            --border: #334155; /* Slate 700 */
+            /* CORRIGIDO: Cores de fundo alteradas para tons de Vinho escuro */
+            --background: #1A0505; /* Preto muito escuro com toque de vinho */
+            --surface: #2B0C0C; /* Superfície/Card, um pouco mais claro */
+            --border: #440F0F; /* Borda um pouco mais clara que a surface */
             --text-primary: #F8FAFC; /* Slate 50 */
-            --text-secondary: #94A3B8; /* Slate 400 */
-            --accent: #F97316; /* Orange 500 */
-            --accent-hover: #EA580C; /* Orange 600 */
+            --text-secondary: #D9CFCF; /* Tom off-white para contraste */
+            --accent: #8B0000; /* Vinho / Dark Red */
+            --accent-hover: #5D0000; /* Vinho mais escuro para hover */
             
             --font-body: 'Inter', sans-serif;
             --font-heading: 'Montserrat', sans-serif;
@@ -53,7 +54,8 @@
         .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-primary); }
         .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); background-color: var(--background); color: var(--text-primary); font-family: var(--font-body); }
         .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--accent); outline: none; }
-        .logo-img { height: 60px; margin-bottom: 1.5rem; background: #fff; padding: 5px; border-radius: 8px;}
+        /* CORRIGIDO: Removido background: #fff e padding: 5px */
+        .logo-img { height: 60px; margin-bottom: 1.5rem; border-radius: 8px;} 
 
         /* --- PAINEL PRINCIPAL --- */
         #admin-panel { display: none; flex: 1; flex-direction: column; }
@@ -67,6 +69,7 @@
         #admin-hero p { font-size: 1.2rem; color: var(--text-secondary); }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 30px; margin-bottom: 30px; }
+        /* Cards também usam a cor surface */
         .stat-card { background-color: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
         .stat-number { font-family: var(--font-heading); font-size: 3rem; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: 0.5rem; }
         .stat-label { font-size: 1rem; color: var(--text-secondary); font-weight: 500; }
@@ -106,13 +109,13 @@
             <form id="login-form">
                 <div class="input-group">
                     <label for="username">Usuário (Admin)</label>
-                    <!-- VALOR CORRIGIDO -->
-                    <input type="text" id="username" required value="leanttro">
+                    <!-- VALOR CORRIGIDO: Deve ser 'admin' para bater com o seed do app.py -->
+                    <input type="text" id="username" required value="admin">
                 </div>
                 <div class="input-group">
                     <label for="password">Chave de Acesso (Senha)</label>
-                    <!-- VALOR CORRIGIDO -->
-                    <input type="password" id="password" required value="12345">
+                    <!-- VALOR CORRIGIDO: Valor padrão '123' para facilitar, mas o usuário deve digitá-lo -->
+                    <input type="password" id="password" required value="123">
                 </div>
                 <!-- O id 'login-button' foi removido e o type="submit" adicionado para funcionar com o listener 'submit' -->
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button> 
@@ -289,9 +292,21 @@
         </div>
     </div>
 
+    <!-- NOVO: Modal Simples para Alertas e Confirmações (Substitui alert/confirm) -->
+    <div id="custom-dialog-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; text-align: center;">
+            <p id="dialog-message" style="margin-bottom: 1.5rem; color: var(--text-primary); font-size: 1.1rem;"></p>
+            <div id="dialog-buttons" class="modal-buttons" style="justify-content: center;">
+                <button type="button" class="btn btn-success" id="dialog-ok-btn">OK</button>
+                <button type="button" class="btn btn-danger" id="dialog-cancel-btn" style="display:none;">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // URL da API (do seu app.py)
-        const API_BASE_URL = 'https://suagrafica-portalcliente.onrender.com'; // Mude para a URL do Render quando fizer deploy
+        // NOTE: Se você estiver fazendo deploy, mude para a URL do Render/servidor, como 'https://suagrafica-portalcliente.onrender.com'
+        const API_BASE_URL = 'https://suagrafica-portalcliente.onrender.com'; 
 
         // --- Seletores Globais ---
         const loginScreen = document.getElementById('login-screen');
@@ -322,6 +337,13 @@
         const clientSuccessMsg = document.getElementById('client-success-msg');
         const clientsTableBody = document.querySelector('#clients-table tbody');
 
+        // --- Seletores Dialog Customizado ---
+        const customDialogModal = document.getElementById('custom-dialog-modal');
+        const dialogMessage = document.getElementById('dialog-message');
+        const dialogOkBtn = document.getElementById('dialog-ok-btn');
+        const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
+        let confirmCallback = null;
+
         let isEditingProduct = false; // Flag para controlar se o modal de produto está editando ou criando
 
         // --- FUNÇÕES DE UTILS ---
@@ -335,6 +357,44 @@
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
         }
+
+        // --- FUNÇÕES DE DIÁLOGO CUSTOMIZADO (Substitui alert() e confirm()) ---
+        function showCustomAlert(message) {
+            dialogMessage.textContent = message;
+            dialogOkBtn.style.display = 'block';
+            dialogCancelBtn.style.display = 'none';
+            customDialogModal.style.display = 'flex';
+        }
+
+        function showCustomConfirm(message, callback) {
+            dialogMessage.textContent = message;
+            dialogOkBtn.style.display = 'block';
+            dialogCancelBtn.style.display = 'block';
+            confirmCallback = callback;
+            customDialogModal.style.display = 'flex';
+        }
+
+        dialogOkBtn.addEventListener('click', () => {
+            customDialogModal.style.display = 'none';
+            if (dialogCancelBtn.style.display !== 'none' && confirmCallback) {
+                // Modo Confirm e OK pressionado
+                confirmCallback(true);
+                confirmCallback = null;
+            } else if (confirmCallback) {
+                // Modo Alert (ou Confirm e OK pressionado)
+                confirmCallback = null;
+            }
+        });
+
+        dialogCancelBtn.addEventListener('click', () => {
+            customDialogModal.style.display = 'none';
+            // Modo Confirm e Cancelar pressionado
+            if (confirmCallback) {
+                confirmCallback(false);
+                confirmCallback = null;
+            }
+        });
+
 
         // --- FUNÇÕES DE AUTENTICAÇÃO ---
         function showPanel() {
@@ -358,6 +418,7 @@
             loginButton.disabled = true;
 
             try {
+                // CORREÇÃO API_BASE_URL
                 const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -491,7 +552,8 @@
                 productIdInput.value = p.id;
                 document.getElementById('product-codigo').value = p.codigo_produto;
                 document.getElementById('product-name').value = p.nome_produto;
-                document.getElementById('product-preco').value = p.preco_minimo;
+                // Preço Mínimo é float
+                document.getElementById('product-preco').value = p.preco_minimo; 
                 document.getElementById('product-multiplos').value = p.multiplos_de;
                 document.getElementById('product-url').value = p.imagem_url;
                 document.getElementById('product-description').value = p.descricao;
@@ -501,7 +563,8 @@
                 productModal.style.display = 'flex';
 
             } catch (error) {
-                alert('Erro ao carregar dados do produto para edição.');
+                // CORREÇÃO: Substitui alert() por showCustomAlert()
+                showCustomAlert('Erro ao carregar dados do produto para edição.');
                 console.error(error);
             }
         }
@@ -554,25 +617,28 @@
             }
         });
 
-        async function deleteProduct(id) {
-            if (!confirm(`Tem certeza que deseja EXCLUIR o produto ID ${id}? Esta ação não pode ser desfeita.`)) return;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/produtos/${id}`, {
-                    method: 'DELETE',
-                    headers: getAuthHeaders()
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    alert(data.mensagem);
-                    loadProductsTable();
-                    loadDashboardStats();
-                } else {
-                    alert(data.erro);
+        // CORREÇÃO: Refatorado para usar showCustomConfirm()
+        function deleteProduct(id) {
+            showCustomConfirm(`Tem certeza que deseja EXCLUIR o produto ID ${id}? Esta ação não pode ser desfeita.`, async (confirmed) => {
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/admin/produtos/${id}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        showCustomAlert(data.mensagem); // Substitui alert()
+                        loadProductsTable();
+                        loadDashboardStats();
+                    } else {
+                        showCustomAlert(data.erro); // Substitui alert()
+                    }
+                } catch (error) {
+                    showCustomAlert('Erro ao conectar com a API.'); // Substitui alert()
                 }
-            } catch (error) {
-                alert('Erro ao conectar com a API.');
-            }
+            });
         }
 
         // --- Listeners Modal Produto ---
@@ -660,25 +726,28 @@
             }
         });
 
-        async function deleteClient(id) {
-            if (!confirm(`Tem certeza que deseja EXCLUIR o cliente ID ${id}?`)) return;
-            
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/admin/clientes/${id}`, {
-                    method: 'DELETE',
-                    headers: getAuthHeaders()
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    alert(data.mensagem);
-                    loadClientsTable();
-                    loadDashboardStats();
-                } else {
-                    alert(data.erro);
+        // CORREÇÃO: Refatorado para usar showCustomConfirm()
+        function deleteClient(id) {
+            showCustomConfirm(`Tem certeza que deseja EXCLUIR o cliente ID ${id}?`, async (confirmed) => {
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/admin/clientes/${id}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        showCustomAlert(data.mensagem); // Substitui alert()
+                        loadClientsTable();
+                        loadDashboardStats();
+                    } else {
+                        showCustomAlert(data.erro); // Substitui alert()
+                    }
+                } catch (error) {
+                    showCustomAlert('Erro ao conectar com a API.'); // Substitui alert()
                 }
-            } catch (error) {
-                alert('Erro ao conectar com a API.');
-            }
+            });
         }
 
         // --- Listeners Modal Cliente ---
