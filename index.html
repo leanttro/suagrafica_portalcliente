@@ -364,9 +364,10 @@
             font-weight: 700;
         }
 
+        /* --- MODIFICAÇÃO: AUMENTO DA BARRA LATERAL MOBILE --- */
         @media (max-width: 768px) {
             .sidebar {
-                width: 70px; /* Sidebar colapsada */
+                width: 95px; /* AUMENTADO DE 70px para 95px */
                 padding: 10px 0;
             }
             .sidebar-logo {
@@ -382,7 +383,7 @@
                 justify-content: center;
             }
             .main-content {
-                margin-left: 70px;
+                margin-left: 95px; /* AUMENTADO DE 70px para 95px (Para acompanhar a sidebar) */
             }
             .cart-overlay {
                 width: 100%;
@@ -1456,7 +1457,7 @@
                 
             } catch (error) {
                 console.error('Erro ao carregar histórico de pedidos:', error);
-                tableBody.innerHTML = '<tr><td colspan="5" style="color:var(--status-rejected); text-align: center;">Erro ao carregar histórico.</td></tr>';
+                tableBody.innerHTML = '<tr><td colspan="5" style="color:var(--status-rejected);">Erro ao carregar histórico.</td></tr>';
             }
         }
         
