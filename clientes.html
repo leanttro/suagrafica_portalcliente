@@ -383,7 +383,6 @@
 </head>
 <body>
 
-    <!-- TELA DE LOGIN -->
     <div id="login-screen">
         <div class="login-box">
             <img src="logo.png" alt="[SUA GRÁFICA] Logo" class="logo-img">
@@ -391,17 +390,14 @@
             <form id="login-form">
                 <div class="input-group">
                     <label for="client-codigo">Código de Acesso (Senha)</label>
-                    <!-- Preenchido com o cliente de teste que você cadastrou -->
                     <input type="text" id="client-codigo" required value="12345" placeholder="Digite seu código de acesso">
                 </div>
-                <!-- CORREÇÃO CRÍTICA: Chamando handleLogin no onclick, e mudando type para button para evitar refresh -->
                 <button type="button" class="btn btn-primary" style="width: 100%;" onclick="handleLogin(event)">Entrar</button> 
                 <p class="error-msg" id="login-error">Código inválido ou cliente inativo.</p>
             </form>
         </div>
     </div>
 
-    <!-- PORTAL DO CLIENTE -->
     <div id="client-portal">
         <div class="sidebar">
             <div class="sidebar-logo">
@@ -428,7 +424,6 @@
                 </div>
             </div>
 
-            <!-- Dashboard View -->
             <div class="content-view" id="dashboard-view">
                 <div class="content-section">
                     <div class="dashboard-grid">
@@ -458,7 +453,6 @@
                 </div>
             </div>
 
-            <!-- Produtos View -->
             <div class="content-view" id="produtos-view" style="display:none;">
                  <div class="content-section">
                     <h1>Catálogo de Produtos</h1>
@@ -468,7 +462,6 @@
                 </div>
             </div>
 
-            <!-- Pedidos View -->
             <div class="content-view" id="pedidos-view" style="display:none;">
                 <div class="content-section">
                     <h1>Histórico de Pedidos</h1>
@@ -485,7 +478,6 @@
         </div>
     </div>
 
-    <!-- Carrinho Lateral -->
     <div class="cart-overlay" id="cart-overlay">
         <div class="cart-header">
             Carrinho
@@ -847,7 +839,8 @@
             tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando histórico completo...</td></tr>';
 
             try {
-                const response = await fetch(`${API_BASE_URL}/api/cliente/pedidos`, { headers: getAuthHeaders() });
+                // CORREÇÃO CRÍTICA: Passando CLIENT_ID como parâmetro de URL
+                const response = await fetch(`${API_BASE_URL}/api/cliente/pedidos?cliente_id=${CLIENT_ID}`, { headers: getAuthHeaders() });
                 if (response.status === 403 || response.status === 401) { return showLogin(); }
                 if (!response.ok) throw new Error('Falha ao carregar pedidos.');
                 
