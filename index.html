@@ -25,6 +25,7 @@
             --status-pending: #FACC15; /* Amarelo */
             --status-confirmed: #10B981; /* Verde */
             --status-rejected: #EF4444; /* Vermelho */
+            --status-default: #6B7280; /* Cinza */
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -98,6 +99,12 @@
         .status-Ativo, .status-true { background-color: var(--status-confirmed); }
         .status-Inativo, .status-false { background-color: var(--status-rejected); }
         
+        /* Novos Status de Pedidos */
+        .status-AguardandoAprovação { background-color: var(--status-pending); color: #000; }
+        .status-AguardandoPagamento { background-color: #3B82F6; color: #fff; }
+        .status-Pago { background-color: var(--status-confirmed); }
+        .status-Cancelado, .status-Rejeitado { background-color: var(--status-rejected); }
+        
         .product-image-cell img { height: 40px; width: 40px; object-fit: cover; border-radius: 4px; background: #fff; }
 
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.8); z-index: 5000; display: none; align-items: center; justify-content: center; }
@@ -109,19 +116,24 @@
         .form-grid .full-width { grid-column: 1 / -1; }
         .form-check { display: flex; align-items: center; gap: 0.5rem; background: var(--background); padding: 0.8rem; border-radius: 8px; }
         .form-check input { width: auto; }
+
+        /* Estilo Detalhe do Pedido */
+        .pedido-details p { margin-bottom: 0.5rem; font-size: 1.05rem; }
+        .pedido-details strong { color: var(--text-primary); font-weight: 700; }
+        .itens-table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; background-color: var(--background); }
+        .itens-table th, .itens-table td { padding: 0.8rem; border: 1px solid var(--border); }
+        .itens-table th { background-color: var(--accent-hover); color: var(--text-primary); }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
         <div class="login-box">
-            <!-- Use seu logo.png aqui -->
             <img src="logo.png" alt="[SUA GRÁFICA] Logo" class="logo-img">
             <h2>Painel Admin B2B</h2>
             <form id="login-form">
                 <div class="input-group">
                     <label for="username">Usuário (Admin)</label>
-                    <!-- Preenchido com o usuário que você criou manualmente -->
                     <input type="text" id="username" required value="LEANDRO">
                 </div>
                 <div class="input-group">
@@ -137,9 +149,7 @@
     <div id="admin-panel">
         <header>
             <div class="container admin-header">
-                 <!-- Logo pequeno no topo da página -->
-                <a href="#"><img src="logo.png" alt="[SUA GRÁFICA] Logo" class="logo-img" style="height: 40px;"></a>
-                <!-- CORRIGIDO: Botão de Sair em Branco -->
+                 <a href="#"><img src="logo.png" alt="[SUA GRÁFICA] Logo" class="logo-img" style="height: 40px;"></a>
                 <button class="btn-logout" id="logout-btn">Sair <i class="fas fa-sign-out-alt"></i></button>
             </div>
         </header>
@@ -147,11 +157,9 @@
         <main>
             <div id="admin-hero">
                 <div class="container">
-                    <!-- CORRIGIDO: Logo maior e centralizado -->
                     <div class="hero-logo-container">
                         <img src="logo.png" alt="[SUA GRÁFICA] Logo" class="hero-logo">
                     </div>
-                    <!-- CORRIGIDO: Título principal em Branco -->
                     <h1>Portal de Gerenciamento B2B</h1>
                     <p>Controle de Produtos, Clientes, Pedidos e Usuários</p>
                 </div>
@@ -174,6 +182,21 @@
                 </div>
             </div>
 
+            <section class="admin-section" style="background-color: var(--background);">
+                 <div class="container">
+                    <div class="section-header">
+                        <h2>Gerenciar Pedidos de Clientes</h2>
+                    </div>
+                    <table class="admin-table" id="orders-table">
+                        <thead>
+                            <tr><th>ID</th><th>Cliente</th><th>Data</th><th>Valor Total</th><th>Status</th><th>Ações</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr id="orders-loading"><td colspan="6" style="text-align: center;">Carregando lista de pedidos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
             <section class="admin-section">
                 <div class="container">
                     <div class="section-header">
@@ -208,7 +231,6 @@
                 </div>
             </section>
 
-            <!-- NOVO: Seção de Gerenciamento de Administradores -->
             <section class="admin-section" style="background-color: var(--background);">
                  <div class="container">
                     <div class="section-header">
@@ -228,9 +250,6 @@
         </main>
     </div>
 
-    <!-- ====================================================== -->
-    <!-- MODAL DE PRODUTOS (CRIAR E EDITAR) -->
-    <!-- ====================================================== -->
     <div id="product-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" id="close-product-modal">&times;</button>
@@ -288,9 +307,6 @@
         </div>
     </div>
     
-    <!-- ====================================================== -->
-    <!-- MODAL DE CLIENTES (CRIAR) -->
-    <!-- ====================================================== -->
     <div id="client-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" id="close-client-modal">&times;</button>
@@ -326,9 +342,6 @@
         </div>
     </div>
 
-    <!-- ====================================================== -->
-    <!-- NOVO: MODAL DE ADMINISTRADORES (CRIAR) -->
-    <!-- ====================================================== -->
     <div id="admin-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close" id="close-admin-modal">&times;</button>
@@ -353,9 +366,61 @@
             </form>
         </div>
     </div>
+    
+    <div id="order-detail-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" id="close-order-modal">&times;</button>
+            <h3 id="order-modal-title">Detalhes do Pedido #<span id="order-id-display"></span></h3>
+            
+            <div class="pedido-details">
+                <p><strong>Cliente:</strong> <span id="order-client-name"></span> (ID: <span id="order-client-id"></span>)</p>
+                <p><strong>Data de Criação:</strong> <span id="order-creation-date"></span></p>
+                
+                <div class="form-grid full-width" style="margin-top: 1rem; border-top: 1px dashed var(--border); padding-top: 1rem;">
+                    <div class="input-group">
+                        <label for="order-status">Status do Pedido</label>
+                        <select id="order-status" required>
+                            <option value="Aguardando Aprovação">Aguardando Aprovação</option>
+                            <option value="Aguardando Pagamento">Aguardando Pagamento</option>
+                            <option value="Pago">Pago</option>
+                            <option value="Em Produção">Em Produção</option>
+                            <option value="Pronto para Retirada">Pronto para Retirada</option>
+                            <option value="Concluído">Concluído</option>
+                            <option value="Cancelado">Cancelado</option>
+                            <option value="Rejeitado">Rejeitado</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="order-total">Valor Total (R$)</label>
+                        <input type="number" id="order-total" step="0.01" required>
+                    </div>
+                    <div class="input-group full-width">
+                        <label for="order-payment-link">Link de Pagamento (URL)</label>
+                        <input type="text" id="order-payment-link" placeholder="https://linkdepagamento.com.br/...">
+                    </div>
+                </div>
+
+                <h4>Itens do Pedido</h4>
+                <table class="itens-table">
+                    <thead>
+                        <tr><th>Produto</th><th>Código</th><th>Preço Unit.</th><th>Quantidade</th><th>Subtotal</th></tr>
+                    </thead>
+                    <tbody id="order-items-list">
+                        </tbody>
+                </table>
+                
+                <p class="error-msg" id="order-error-msg">Erro ao atualizar pedido.</p>
+                <p class="success-msg" id="order-success-msg">Pedido atualizado com sucesso!</p>
+            </div>
+            
+            <div class="modal-buttons">
+                <button type="button" class="btn btn-danger" id="cancel-order">Fechar</button>
+                <button type="button" class="btn btn-success" id="save-order-btn">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
 
 
-    <!-- NOVO: Modal Simples para Alertas e Confirmações (Substitui alert/confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
             <p id="dialog-message" style="margin-bottom: 1.5rem; color: var(--text-primary); font-size: 1.1rem;"></p>
@@ -385,16 +450,19 @@
         // --- Seletores Tabelas ---
         const productsTableBody = document.querySelector('#products-table tbody');
         const clientsTableBody = document.querySelector('#clients-table tbody');
-        const adminsTableBody = document.querySelector('#admins-table tbody'); // NOVO
+        const adminsTableBody = document.querySelector('#admins-table tbody'); 
+        const ordersTableBody = document.querySelector('#orders-table tbody'); // NOVO: Tabela de Pedidos
 
         // --- Seletores Modais ---
         const productModal = document.getElementById('product-modal');
         const productForm = document.getElementById('product-form');
         const clientModal = document.getElementById('client-modal');
         const clientForm = document.getElementById('client-form');
-        const adminModal = document.getElementById('admin-modal'); // NOVO
-        const adminForm = document.getElementById('admin-form'); // NOVO
-        
+        const adminModal = document.getElementById('admin-modal'); 
+        const adminForm = document.getElementById('admin-form'); 
+        const orderDetailModal = document.getElementById('order-detail-modal'); // NOVO: Modal Pedidos
+        const saveOrderBtn = document.getElementById('save-order-btn'); // NOVO
+
         // --- Seletores Modal Produto (detalhados) ---
         const productIdInput = document.getElementById('product-id');
         const productErrorMsg = document.getElementById('product-error-msg');
@@ -407,7 +475,18 @@
         // --- Seletores Modal Admin (detalhados) ---
         const adminErrorMsg = document.getElementById('admin-error-msg');
         const adminSuccessMsg = document.getElementById('admin-success-msg');
-
+        
+        // --- Seletores Modal Pedido (detalhados) ---
+        const orderIdDisplay = document.getElementById('order-id-display');
+        const orderClientName = document.getElementById('order-client-name');
+        const orderClientId = document.getElementById('order-client-id');
+        const orderCreationDate = document.getElementById('order-creation-date');
+        const orderStatusSelect = document.getElementById('order-status');
+        const orderTotalInput = document.getElementById('order-total');
+        const orderPaymentLink = document.getElementById('order-payment-link');
+        const orderItemsList = document.getElementById('order-items-list');
+        const orderErrorMsg = document.getElementById('order-error-msg');
+        const orderSuccessMsg = document.getElementById('order-success-msg');
 
         // --- Seletores Dialog Customizado ---
         const customDialogModal = document.getElementById('custom-dialog-modal');
@@ -416,6 +495,7 @@
         const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
         let confirmCallback = null;
         let isEditingProduct = false; 
+        let currentOrderId = null; // ID do pedido atualmente aberto
 
         // --- FUNÇÕES DE UTILS ---
         function getAuthHeaders() {
@@ -431,6 +511,23 @@
         function formatDate(dateString) {
             const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
             return new Date(dateString).toLocaleDateString('pt-BR', options);
+        }
+        function getStatusClass(status) {
+            // Remove espaços e capitaliza o primeiro para mapear no CSS
+            const statusKey = status.replace(/\s/g, ''); 
+            const statusMap = {
+                'Ativo': 'status-true',
+                'Inativo': 'status-false',
+                'AguardandoAprovação': 'status-AguardandoAprovação',
+                'AguardandoPagamento': 'status-AguardandoPagamento',
+                'Pago': 'status-Pago',
+                'EmProdução': 'status-default',
+                'ProntoparaRetirada': 'status-confirmed',
+                'Concluído': 'status-confirmed',
+                'Cancelado': 'status-rejected',
+                'Rejeitado': 'status-rejected',
+            };
+            return statusMap[statusKey] || 'status-default';
         }
 
         // --- FUNÇÕES DE DIÁLOGO CUSTOMIZADO ---
@@ -522,15 +619,14 @@
         async function loadDashboard() {
             if (!localStorage.getItem('admin_token')) return showLogin();
             loadDashboardStats();
+            loadOrdersTable(); // NOVO: Carregar Pedidos
             loadProductsTable();
             loadClientsTable(); 
-            loadAdminsTable(); // NOVO
+            loadAdminsTable(); 
         }
         
         // --- FUNÇÕES DE CARREGAMENTO DE DADOS (COM TRATAMENTO 403) ---
-        // Funções de CRUD agora usam o token falso, mas ignoram o 403 e prosseguem, 
-        // ou seja, se a API rejeitar, as tabelas estarão vazias, mas a UI não vai travar.
-
+        
         async function loadDashboardStats() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/admin/dashboard_stats`, { headers: getAuthHeaders() });
@@ -539,7 +635,7 @@
                     statProdutosEl.textContent = stats.stat_produtos;
                     statClientesEl.textContent = stats.stat_clientes;
                     statPedidosEl.textContent = stats.stat_pedidos;
-                } else if (response.status === 403 || response.status === 401) { // 401 para o Render
+                } else if (response.status === 403 || response.status === 401) { 
                     console.warn('Backend rejeitou o token (401/403). Dados não carregados.');
                     statProdutosEl.textContent = '0';
                     statClientesEl.textContent = '0';
@@ -551,7 +647,153 @@
         }
         
         // =============================================================
-        // --- CRUD PRODUTOS ---
+        // --- CRUD PEDIDOS (NOVO) ---
+        // =============================================================
+        
+        async function loadOrdersTable() {
+            ordersTableBody.innerHTML = '<tr id="orders-loading"><td colspan="6" style="text-align: center;">Carregando...</td></tr>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/pedidos`, { headers: getAuthHeaders() });
+                if (!response.ok) {
+                    if (response.status === 403 || response.status === 401) {
+                        ordersTableBody.innerHTML = '<tr><td colspan="6" style="color:var(--status-rejected); text-align: center;">Não Autorizado (401/403). Dados vazios.</td></tr>';
+                        return;
+                    }
+                    throw new Error('Falha ao carregar pedidos');
+                }
+                
+                const orders = await response.json();
+                ordersTableBody.innerHTML = '';
+                
+                if (orders.length === 0) {
+                     ordersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Nenhum pedido de cliente cadastrado.</td></tr>';
+                     return;
+                }
+
+                orders.forEach(o => {
+                    const statusClass = getStatusClass(o.status_pedido);
+                    
+                    const row = ordersTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>#${o.id}</td>
+                        <td>${o.nome_cliente}</td>
+                        <td>${formatDate(o.data_criacao)}</td>
+                        <td>${formatCurrency(o.valor_total)}</td>
+                        <td><span class="status-badge ${statusClass}">${o.status_pedido}</span></td>
+                        <td>
+                            <button class="btn-action btn-primary" onclick="openOrderDetailModal(${o.id})">Detalhes/Editar</button>
+                        </td>
+                    `;
+                });
+            } catch (error) {
+                console.error('Erro ao carregar pedidos:', error);
+                ordersTableBody.innerHTML = '<tr><td colspan="6" style="color:var(--status-rejected); text-align: center;">Erro ao carregar lista.</td></tr>';
+            }
+        }
+        
+        async function openOrderDetailModal(id) {
+            orderErrorMsg.style.display = 'none';
+            orderSuccessMsg.style.display = 'none';
+            currentOrderId = id;
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/pedidos/${id}`, { headers: getAuthHeaders() });
+                if (!response.ok) {
+                    if (response.status === 403 || response.status === 401) {
+                        showCustomAlert('Não autorizado (401/403). Por favor, recarregue a página e entre novamente.');
+                        return;
+                    }
+                    throw new Error('Falha ao buscar detalhes do pedido');
+                }
+                const pedido = await response.json();
+                
+                // Preencher campos
+                orderIdDisplay.textContent = pedido.id;
+                orderClientName.textContent = pedido.nome_cliente;
+                orderClientId.textContent = pedido.cliente_id;
+                orderCreationDate.textContent = formatDate(pedido.data_criacao);
+                orderStatusSelect.value = pedido.status_pedido;
+                orderTotalInput.value = pedido.valor_total.toFixed(2);
+                orderPaymentLink.value = pedido.link_pagamento || '';
+                
+                // Preencher itens
+                orderItemsList.innerHTML = '';
+                pedido.itens.forEach(item => {
+                    const subtotal = item.quantidade * item.preco_unitario;
+                    const row = orderItemsList.insertRow();
+                    row.innerHTML = `
+                        <td>${item.nome_produto}</td>
+                        <td>${item.codigo_produto}</td>
+                        <td>${formatCurrency(item.preco_unitario)}</td>
+                        <td>${item.quantidade}</td>
+                        <td>${formatCurrency(subtotal)}</td>
+                    `;
+                });
+                
+                orderDetailModal.style.display = 'flex';
+
+            } catch (error) {
+                showCustomAlert('Erro ao carregar dados do pedido: ' + error.message);
+                console.error(error);
+            }
+        }
+        
+        saveOrderBtn.addEventListener('click', async () => {
+            if (!currentOrderId) return;
+            
+            orderErrorMsg.style.display = 'none';
+            orderSuccessMsg.style.display = 'none';
+            saveOrderBtn.disabled = true;
+            
+            const total = parseFloat(orderTotalInput.value);
+            if (isNaN(total) || total < 0) {
+                 orderErrorMsg.textContent = 'Valor total inválido.';
+                 orderErrorMsg.style.display = 'block';
+                 saveOrderBtn.disabled = false;
+                 return;
+            }
+            
+            const updateData = {
+                status_pedido: orderStatusSelect.value,
+                link_pagamento: orderPaymentLink.value,
+                valor_total: total
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/pedidos/${currentOrderId}`, {
+                    method: 'PUT',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(updateData)
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    orderSuccessMsg.textContent = data.mensagem;
+                    orderSuccessMsg.style.display = 'block';
+                    loadOrdersTable(); 
+                    loadDashboardStats();
+                    setTimeout(() => orderDetailModal.style.display = 'none', 1500);
+                } else if (response.status === 403 || response.status === 401) {
+                     showCustomAlert('Não autorizado (401/403). Falha ao salvar pedido.');
+                }
+                else {
+                    orderErrorMsg.textContent = data.erro || 'Falha ao salvar.';
+                    orderErrorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                orderErrorMsg.textContent = 'Erro de conexão com a API.';
+                orderErrorMsg.style.display = 'block';
+            } finally {
+                saveOrderBtn.disabled = false;
+            }
+        });
+
+        document.getElementById('close-order-modal').addEventListener('click', () => orderDetailModal.style.display = 'none');
+        document.getElementById('cancel-order').addEventListener('click', () => orderDetailModal.style.display = 'none');
+
+        // =============================================================
+        // --- CRUD PRODUTOS --- (Demais Funções mantidas como estavam)
         // =============================================================
         
         async function loadProductsTable() {
@@ -857,7 +1099,7 @@
 
 
         // =============================================================
-        // --- CRUD ADMINISTRADORES (NOVO) ---
+        // --- CRUD ADMINISTRADORES ---
         // =============================================================
         
         async function loadAdminsTable() {

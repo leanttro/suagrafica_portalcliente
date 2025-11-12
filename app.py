@@ -11,7 +11,7 @@ import traceback
 
 # ======================================================================
 # API BACKEND - [SUA GRÁFICA] B2B PORTAL
-# Versão: 1.3 (Correção de Login e Bypass para Frontend Forçado)
+# Versão: 1.4 (Correção do 500 de Pedidos e Adição do CRUD de Pedidos Admin)
 # ======================================================================
 
 load_dotenv()
@@ -231,7 +231,8 @@ def admin_stats():
         cl = cur.fetchone()[0]
         cur.execute("SELECT COUNT(*) FROM suagrafica_produtos WHERE esta_ativo = TRUE")
         pr = cur.fetchone()[0]
-        cur.execute("SELECT COUNT(*) FROM suagrafica_pedidos WHERE status_pedido = 'Aguardando Pagamento'")
+        # Conta pedidos no status 'Aguardando Aprovação' ou 'Aguardando Pagamento'
+        cur.execute("SELECT COUNT(*) FROM suagrafica_pedidos WHERE status_pedido IN ('Aguardando Aprovação', 'Aguardando Pagamento')")
         pe = cur.fetchone()[0]
         return jsonify({"stat_clientes": cl, "stat_produtos": pr, "stat_pedidos": pe})
     finally:
@@ -367,6 +368,81 @@ def admin_delete_admin(id):
     finally:
         if conn: conn.close()
 
+# NOVO: Rotas de Pedidos para o Painel Admin
+@app.route('/api/admin/pedidos', methods=['GET'])
+def admin_listar_pedidos():
+    if not check_auth(request): return jsonify({"erro": "Não autorizado"}), 403
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Traz todos os pedidos junto com o nome do cliente que o criou
+        cur.execute("""
+            SELECT p.id, c.nome_cliente, p.valor_total, p.status_pedido, p.data_criacao
+            FROM suagrafica_pedidos p
+            JOIN suagrafica_clientes c ON p.cliente_id = c.id
+            ORDER BY p.data_criacao DESC
+        """)
+        pedidos = cur.fetchall()
+        for p in pedidos: p['valor_total'] = float(p['valor_total'])
+        return jsonify(pedidos)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"erro": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/admin/pedidos/<int:id>', methods=['GET', 'PUT'])
+def admin_crud_pedido_by_id(id):
+    if not check_auth(request): return jsonify({"erro": "Não autorizado"}), 403
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        if request.method == 'GET':
+            # Detalhes do Pedido
+            cur.execute("""
+                SELECT p.id, c.nome_cliente, p.cliente_id, p.valor_total, p.status_pedido, p.link_pagamento, p.path_comprovante, p.data_criacao
+                FROM suagrafica_pedidos p
+                JOIN suagrafica_clientes c ON p.cliente_id = c.id
+                WHERE p.id = %s
+            """, (id,))
+            pedido = cur.fetchone()
+            
+            if not pedido: return jsonify({"erro": "Pedido não encontrado"}), 404
+
+            # Itens do Pedido
+            cur.execute("""
+                SELECT pi.quantidade, pi.preco_unitario_registrado, pr.nome_produto, pr.codigo_produto
+                FROM suagrafica_pedido_itens pi
+                JOIN suagrafica_produtos pr ON pi.produto_id = pr.id
+                WHERE pi.pedido_id = %s
+            """, (id,))
+            itens = cur.fetchall()
+
+            pedido['valor_total'] = float(pedido['valor_total'])
+            pedido['itens'] = [{'quantidade': i['quantidade'], 'preco_unitario': float(i['preco_unitario_registrado']), 'nome_produto': i['nome_produto'], 'codigo_produto': i['codigo_produto']} for i in itens]
+            
+            return jsonify(pedido)
+
+        elif request.method == 'PUT':
+            data = request.json or {}
+            # Permite atualizar status e link de pagamento
+            cur.execute("""
+                UPDATE suagrafica_pedidos 
+                SET status_pedido = %s, link_pagamento = %s, valor_total = %s 
+                WHERE id = %s
+            """, (data.get('status_pedido'), data.get('link_pagamento'), data.get('valor_total'), id))
+            conn.commit()
+            return jsonify({"mensagem": "Pedido atualizado!"})
+            
+    except Exception as e:
+        traceback.print_exc()
+        if conn: conn.rollback()
+        return jsonify({"erro": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
+
 # ======================================================================
 # 4. ROTAS DO CLIENTE (B2B)
 # ======================================================================
@@ -401,13 +477,19 @@ def cliente_pedidos():
             if not cliente_id_from_url:
                 return jsonify({"erro": "ID do Cliente necessário para ver pedidos"}), 400
             
+            try:
+                # 💡 CORREÇÃO DO ERRO 500: Converte o ID de string (URL param) para inteiro
+                cliente_id = int(cliente_id_from_url)
+            except ValueError:
+                return jsonify({"erro": "ID do Cliente inválido."}), 400
+            
             # Busca pedidos apenas do cliente logado
             cur.execute("""
                 SELECT id, valor_total, status_pedido, data_criacao 
                 FROM suagrafica_pedidos 
                 WHERE cliente_id = %s 
                 ORDER BY data_criacao DESC
-            """, (cliente_id_from_url,))
+            """, (cliente_id,))
             
             pedidos = cur.fetchall()
             for p in pedidos: 
