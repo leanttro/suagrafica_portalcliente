@@ -11,7 +11,7 @@ import traceback
 
 # ======================================================================
 # API BACKEND - [SUA GRÁFICA] B2B PORTAL
-# Versão: 1.0 (Fase 1: Admin CRUD)
+# Versão: 1.2 (Seed de Teste REMOVIDO)
 # ======================================================================
 
 load_dotenv()
@@ -37,7 +37,7 @@ def get_db_connection():
         return None
 
 # ======================================================================
-# 1. SETUP DO BANCO DE DADOS (Baseado no seu script de 5 tabelas)
+# 1. SETUP DO BANCO DE DADOS (APENAS CRIAÇÃO DE TABELAS - SEM SEED)
 # ======================================================================
 def setup_database():
     """Verifica e cria as 5 tabelas B2B se não existirem."""
@@ -107,33 +107,12 @@ def setup_database():
             cur.execute(cmd)
             print(f"  [DB {i+1}/5] Tabela OK.")
         
-        # --- SEED INICIAL (Admin Padrão) ---
-        cur.execute("SELECT COUNT(*) FROM suagrafica_admin WHERE username = 'leanttro'")
-        if cur.fetchone()[0] == 0:
-             # Usuário: leanttro | Senha: 12345 (CORRIGIDO para as credenciais do usuário)
-             cur.execute("INSERT INTO suagrafica_admin (username, chave_admin) VALUES (%s, %s)", ('leanttro', '12345'))
-             print("✅ [DB] Admin padrão (leanttro/12345) criado.")
-        
-        # Garante que o ID do admin seja usado para os dados de teste
-        cur.execute("SELECT id FROM suagrafica_admin WHERE username = 'leanttro' LIMIT 1")
-        admin_id_fetch = cur.fetchone()
-        if admin_id_fetch:
-            admin_id = admin_id_fetch[0]
-
-            # Seed de 1 Cliente e 1 Produto para teste (Verifica se já existem)
-            cur.execute("SELECT COUNT(*) FROM suagrafica_clientes WHERE codigo_acesso = 'CLIENTE123'")
-            if cur.fetchone()[0] == 0:
-                 cur.execute("INSERT INTO suagrafica_clientes (admin_id, nome_cliente, cnpj, codigo_acesso) VALUES (%s, %s, %s, %s)",
-                             (admin_id, 'Cliente Teste S.A', '00.000.000/0001-00', 'CLIENTE123'))
-            
-            cur.execute("SELECT COUNT(*) FROM suagrafica_produtos WHERE codigo_produto = 'ER1458-AZU'")
-            if cur.fetchone()[0] == 0:
-                cur.execute("INSERT INTO suagrafica_produtos (codigo_produto, nome_produto, preco_minimo, multiplos_de) VALUES (%s, %s, %s, %s)",
-                            ('ER1458-AZU', 'CANETA METAL AZUL', 2.10, 50))
-                print("✅ [DB] Dados de teste (Cliente e Produto) verificados/criados.")
+        # --- AQUI ESTAVA O CÓDIGO DE SEED (REMOVIDO!) ---
+        # Não faremos mais a criação automática do 'leanttro'
+        # O banco de dados agora confia 100% no que já está lá (ex: seu usuário LEANDRO)
 
         conn.commit()
-        print("✅ [DB] Arquitetura B2B pronta.")
+        print("✅ [DB] Arquitetura B2B pronta. Nenhum dado de teste foi criado.")
 
     except Exception as e:
         print(f"🔴 ERRO NO SETUP DO DB: {e}")
@@ -314,7 +293,8 @@ def admin_gerenciar_clientes():
         
         # GET: Lista todos os clientes
         if request.method == 'GET':
-            cur.execute("SELECT * FROM suagrafica_clientes WHERE admin_id = %s ORDER BY nome_cliente", (admin_id,))
+            # Lista clientes para todos os admins
+            cur.execute("SELECT * FROM suagrafica_clientes ORDER BY nome_cliente")
             return jsonify(cur.fetchall())
             
         # POST: Adiciona um novo cliente
@@ -351,17 +331,86 @@ def admin_delete_cliente(id):
     conn = get_db_connection()
     try:
         cur = conn.cursor()
-        cur.execute("DELETE FROM suagrafica_clientes WHERE id = %s AND admin_id = %s", (id, admin_id))
+        # Deleta o cliente
+        cur.execute("DELETE FROM suagrafica_clientes WHERE id = %s", (id,)) 
         conn.commit()
         if cur.rowcount == 0:
-            return jsonify({"erro": "Cliente não encontrado ou não pertence a este admin"}), 404
+            return jsonify({"erro": "Cliente não encontrado"}), 404
         return jsonify({"mensagem": "Cliente deletado com sucesso!"})
     except Exception as e:
         if conn: conn.rollback()
         return jsonify({"erro": f"Erro interno: {e}"}), 500
     finally:
         if conn: conn.close()
+        
+# ======================================================================
+# 6. ENDPOINTS - ADMIN: CRUD ADMINISTRADORES (Novo)
+# ======================================================================
+@app.route('/api/admin/users', methods=['GET', 'POST'])
+def admin_gerenciar_admins():
+    admin_id = check_auth(request)
+    if not admin_id: return jsonify({"erro": "Não autorizado"}), 403
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        
+        # GET: Lista todos os admins
+        if request.method == 'GET':
+            cur.execute("SELECT id, username, data_criacao FROM suagrafica_admin ORDER BY id")
+            return jsonify(cur.fetchall())
+            
+        # POST: Adiciona um novo administrador
+        elif request.method == 'POST':
+            data = request.json or {}
+            username = data.get('username')
+            chave_admin = data.get('chave_admin')
+            
+            if not username or not chave_admin:
+                return jsonify({"erro": "Usuário e Senha são obrigatórios."}), 400
+            if len(chave_admin) < 4:
+                return jsonify({"erro": "A senha deve ter pelo menos 4 caracteres."}), 400
 
+            cur.execute("""
+                INSERT INTO suagrafica_admin (username, chave_admin)
+                VALUES (%s, %s) RETURNING id
+            """, (username, chave_admin))
+            conn.commit()
+            return jsonify({"mensagem": "Administrador adicionado com sucesso!", "id": cur.fetchone()['id']}), 201
+
+    except Exception as e:
+        if conn: conn.rollback()
+        if "unique constraint" in str(e).lower():
+            return jsonify({"erro": "Este nome de usuário já está em uso."}), 409
+        return jsonify({"erro": f"Erro interno: {e}"}), 500
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/admin/users/<int:id>', methods=['DELETE'])
+def admin_delete_admin(id):
+    """Deleta um administrador."""
+    admin_id = check_auth(request)
+    if not admin_id: return jsonify({"erro": "Não autorizado"}), 403
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        
+        # Garante que não é possível deletar o último admin
+        cur.execute("SELECT COUNT(*) FROM suagrafica_admin")
+        if cur.fetchone()[0] == 1:
+            return jsonify({"erro": "Não é possível deletar o único administrador restante."}), 400
+            
+        cur.execute("DELETE FROM suagrafica_admin WHERE id = %s", (id,))
+        conn.commit()
+        if cur.rowcount == 0:
+            return jsonify({"erro": "Administrador não encontrado"}), 404
+        return jsonify({"mensagem": "Administrador deletado com sucesso!"})
+    except Exception as e:
+        if conn: conn.rollback()
+        return jsonify({"erro": f"Erro interno: {e}"}), 500
+    finally:
+        if conn: conn.close()
 
 # ======================================================================
 # INICIALIZAÇÃO

@@ -10,12 +10,12 @@
     <style>
         /* --- TEMA CORPORATE DARK (Baseado no seu Portfólio) --- */
         :root {
-            /* CORRIGIDO: Cores de fundo alteradas para tons de Vinho escuro */
-            --background: #1A0505; /* Preto muito escuro com toque de vinho */
-            --surface: #2B0C0C; /* Superfície/Card, um pouco mais claro */
-            --border: #440F0F; /* Borda um pouco mais clara que a surface */
-            --text-primary: #F8FAFC; /* Slate 50 */
-            --text-secondary: #D9CFCF; /* Tom off-white para contraste */
+            /* Cores de fundo alteradas para tons de Vinho escuro */
+            --background: #1A0505; 
+            --surface: #2B0C0C; 
+            --border: #440F0F; 
+            --text-primary: #F8FAFC; 
+            --text-secondary: #D9CFCF; 
             --accent: #8B0000; /* Vinho / Dark Red */
             --accent-hover: #5D0000; /* Vinho mais escuro para hover */
             
@@ -46,7 +46,7 @@
         .error-msg { color: var(--status-rejected); margin-top: 1rem; display: none; }
         .success-msg { color: var(--status-confirmed); margin-top: 1rem; display: none; }
         
-        /* --- TELA DE LOGIN (Adaptada do laisvitor_admin) --- */
+        /* --- TELA DE LOGIN --- */
         #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--background); z-index: 2000; display: flex; align-items: center; justify-content: center; }
         .login-box { background-color: var(--surface); padding: 3rem; border-radius: 12px; border: 1px solid var(--border); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
         .login-box h2 { font-size: 2rem; margin-bottom: 2rem; color: var(--text-primary); }
@@ -54,7 +54,6 @@
         .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-primary); }
         .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); background-color: var(--background); color: var(--text-primary); font-family: var(--font-body); }
         .input-group input:focus, .input-group textarea:focus, .input-group select:focus { border-color: var(--accent); outline: none; }
-        /* Fundo do logo removido na correção anterior */
         .logo-img { height: 60px; margin-bottom: 1.5rem; border-radius: 8px;} 
 
         /* --- PAINEL PRINCIPAL --- */
@@ -69,7 +68,6 @@
         #admin-hero p { font-size: 1.2rem; color: var(--text-secondary); }
 
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-top: 30px; margin-bottom: 30px; }
-        /* Cards também usam a cor surface */
         .stat-card { background-color: var(--surface); padding: 2rem; border-radius: 12px; border: 1px solid var(--border); text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .stat-number { font-family: var(--font-heading); font-size: 3rem; font-weight: 700; color: var(--text-primary); line-height: 1; margin-bottom: 0.5rem; }
         .stat-label { font-size: 1rem; color: var(--text-secondary); font-weight: 500; }
@@ -109,15 +107,13 @@
             <form id="login-form">
                 <div class="input-group">
                     <label for="username">Usuário (Admin)</label>
-                    <!-- Credenciais preenchidas -->
-                    <input type="text" id="username" required value="leanttro">
+                    <!-- Preenchido com o usuário que você criou manualmente -->
+                    <input type="text" id="username" required value="LEANDRO">
                 </div>
                 <div class="input-group">
                     <label for="password">Chave de Acesso (Senha)</label>
-                    <!-- Credenciais preenchidas -->
-                    <input type="password" id="password" required value="12345">
+                    <input type="password" id="password" required placeholder="Digite a senha que você criou">
                 </div>
-                <!-- O id 'login-button' foi removido e o type="submit" adicionado para funcionar com o listener 'submit' -->
                 <button type="submit" class="btn btn-primary" style="width: 100%;">Entrar</button> 
                 <p class="error-msg" id="login-error">Credenciais inválidas.</p>
             </form>
@@ -137,7 +133,7 @@
             <div id="admin-hero">
                 <div class="container">
                     <h1>Portal de Gerenciamento B2B</h1>
-                    <p>Controle de Produtos, Clientes e Pedidos</p>
+                    <p>Controle de Produtos, Clientes, Pedidos e Usuários</p>
                 </div>
                 
                 <div class="container">
@@ -187,6 +183,24 @@
                         </thead>
                         <tbody>
                             <tr id="clients-loading"><td colspan="5" style="text-align: center;">Carregando lista de clientes...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- NOVO: Seção de Gerenciamento de Administradores -->
+            <section class="admin-section" style="background-color: var(--background);">
+                 <div class="container">
+                    <div class="section-header">
+                        <h2>Gerenciar Usuários Admin (suagrafica_admin)</h2>
+                        <button class="btn btn-primary" id="open-add-admin-modal">+ Adicionar Novo Admin</button>
+                    </div>
+                    <table class="admin-table" id="admins-table">
+                        <thead>
+                            <tr><th>ID</th><th>Usuário</th><th>Data de Criação</th><th>Ações</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr id="admins-loading"><td colspan="4" style="text-align: center;">Carregando lista de administradores...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -292,6 +306,35 @@
         </div>
     </div>
 
+    <!-- ====================================================== -->
+    <!-- NOVO: MODAL DE ADMINISTRADORES (CRIAR) -->
+    <!-- ====================================================== -->
+    <div id="admin-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" id="close-admin-modal">&times;</button>
+            <h3>Adicionar Novo Administrador</h3>
+            <form id="admin-form">
+                <div class="input-group">
+                    <label for="admin-username">Nome de Usuário</label>
+                    <input type="text" id="admin-username" required placeholder="Ex: novo.admin">
+                </div>
+                <div class="input-group">
+                    <label for="admin-password">Chave de Acesso (Senha)</label>
+                    <input type="password" id="admin-password" required placeholder="Mínimo 4 caracteres">
+                </div>
+                
+                <p class="error-msg" id="admin-error-msg">Erro ao salvar.</p>
+                <p class="success-msg" id="admin-success-msg">Administrador adicionado com sucesso!</p>
+                
+                <div class="modal-buttons">
+                    <button type="button" class="btn btn-danger" id="cancel-admin">Cancelar</button>
+                    <button type="submit" class="btn btn-success" id="save-admin-btn">Salvar Administrador</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
     <!-- NOVO: Modal Simples para Alertas e Confirmações (Substitui alert/confirm) -->
     <div id="custom-dialog-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; text-align: center;">
@@ -304,7 +347,7 @@
     </div>
 
     <script>
-        // Esta variável não será usada para o login, mas é mantida para outras chamadas
+        // URL da API (do seu app.py)
         const API_BASE_URL = 'https://suagrafica-portalcliente.onrender.com'; 
 
         // --- Seletores Globais ---
@@ -319,22 +362,32 @@
         const statClientesEl = document.getElementById('stat-clientes');
         const statPedidosEl = document.getElementById('stat-pedidos');
 
-        // --- Seletores Modal Produto ---
+        // --- Seletores Tabelas ---
+        const productsTableBody = document.querySelector('#products-table tbody');
+        const clientsTableBody = document.querySelector('#clients-table tbody');
+        const adminsTableBody = document.querySelector('#admins-table tbody'); // NOVO
+
+        // --- Seletores Modais ---
         const productModal = document.getElementById('product-modal');
-        const productModalTitle = document.getElementById('product-modal-title');
         const productForm = document.getElementById('product-form');
-        const saveProductBtn = document.getElementById('save-product-btn');
+        const clientModal = document.getElementById('client-modal');
+        const clientForm = document.getElementById('client-form');
+        const adminModal = document.getElementById('admin-modal'); // NOVO
+        const adminForm = document.getElementById('admin-form'); // NOVO
+        
+        // --- Seletores Modal Produto (detalhados) ---
         const productIdInput = document.getElementById('product-id');
         const productErrorMsg = document.getElementById('product-error-msg');
         const productSuccessMsg = document.getElementById('product-success-msg');
-        const productsTableBody = document.querySelector('#products-table tbody');
-
-        // --- Seletores Modal Cliente ---
-        const clientModal = document.getElementById('client-modal');
-        const clientForm = document.getElementById('client-form');
+        
+        // --- Seletores Modal Cliente (detalhados) ---
         const clientErrorMsg = document.getElementById('client-error-msg');
         const clientSuccessMsg = document.getElementById('client-success-msg');
-        const clientsTableBody = document.querySelector('#clients-table tbody');
+        
+        // --- Seletores Modal Admin (detalhados) ---
+        const adminErrorMsg = document.getElementById('admin-error-msg');
+        const adminSuccessMsg = document.getElementById('admin-success-msg');
+
 
         // --- Seletores Dialog Customizado ---
         const customDialogModal = document.getElementById('custom-dialog-modal');
@@ -342,7 +395,6 @@
         const dialogOkBtn = document.getElementById('dialog-ok-btn');
         const dialogCancelBtn = document.getElementById('dialog-cancel-btn');
         let confirmCallback = null;
-
         let isEditingProduct = false; 
 
         // --- FUNÇÕES DE UTILS ---
@@ -356,15 +408,18 @@
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
         }
+        function formatDate(dateString) {
+            const options = { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' };
+            return new Date(dateString).toLocaleDateString('pt-BR', options);
+        }
 
-        // --- FUNÇÕES DE DIÁLOGO CUSTOMIZADO (Substitui alert() e confirm()) ---
+        // --- FUNÇÕES DE DIÁLOGO CUSTOMIZADO ---
         function showCustomAlert(message) {
             dialogMessage.textContent = message;
             dialogOkBtn.style.display = 'block';
             dialogCancelBtn.style.display = 'none';
             customDialogModal.style.display = 'flex';
         }
-
         function showCustomConfirm(message, callback) {
             dialogMessage.textContent = message;
             dialogOkBtn.style.display = 'block';
@@ -372,7 +427,6 @@
             confirmCallback = callback;
             customDialogModal.style.display = 'flex';
         }
-
         dialogOkBtn.addEventListener('click', () => {
             customDialogModal.style.display = 'none';
             if (dialogCancelBtn.style.display !== 'none' && confirmCallback) {
@@ -382,7 +436,6 @@
                 confirmCallback = null;
             }
         });
-
         dialogCancelBtn.addEventListener('click', () => {
             customDialogModal.style.display = 'none';
             if (confirmCallback) {
@@ -413,24 +466,35 @@
             loginButton.disabled = true;
 
             // ==========================================================
-            // CÓDIGO CRÍTICO: FORÇAR LOGIN SEM CHAMAR A API
+            // CORRIGIDO: LOGIN REAL (IGUAL AO laisvitor_admin.html)
             // ==========================================================
-            if (user === 'leanttro' && pass === '12345') {
-                // Simula um token (pode ser qualquer string)
-                localStorage.setItem('admin_token', 'FORCED_LEANTTRO_TOKEN_12345'); 
-                loginErrorMsg.style.display = 'none';
-                showPanel();
-            } else {
-                // Caso contrário, mostra o erro
-                loginErrorMsg.textContent = 'Credenciais inválidas. Use leanttro/12345.';
+            try {
+                // Usa a rota definida no seu app.py: /api/admin/login
+                // Envia 'chave_admin' que é o que o backend espera
+                const response = await fetch(`${API_BASE_URL}/api/admin/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username: user, chave_admin: pass })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('admin_token', data.token); // Salva o token REAL
+                    loginErrorMsg.style.display = 'none';
+                    showPanel();
+                } else {
+                    loginErrorMsg.textContent = 'Usuário ou chave inválidos.';
+                    loginErrorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Erro no login:', error);
+                loginErrorMsg.textContent = 'Erro ao conectar ao servidor.';
                 loginErrorMsg.style.display = 'block';
             }
-            // ==========================================================
             
             loginButton.disabled = false;
         }
         
-        // Evento 'submit' no formulário de login
         loginForm.addEventListener('submit', (e) => { 
             e.preventDefault(); 
             handleLogin(); 
@@ -444,14 +508,10 @@
             loadDashboardStats();
             loadProductsTable();
             loadClientsTable(); 
+            loadAdminsTable(); // NOVO
         }
         
-        // ***************************************************************
-        // NOTA: As funções abaixo ainda tentam chamar a API. 
-        // Se a API estiver offline, elas falharão e mostrarão o erro.
-        // O login em si, no entanto, é garantido.
-        // ***************************************************************
-        
+        // --- FUNÇÕES DE CARREGAMENTO DE DADOS (COM TRATAMENTO 403) ---
         async function loadDashboardStats() {
             try {
                 const response = await fetch(`${API_BASE_URL}/api/admin/dashboard_stats`, { headers: getAuthHeaders() });
@@ -461,27 +521,16 @@
                     statClientesEl.textContent = stats.stat_clientes;
                     statPedidosEl.textContent = stats.stat_pedidos;
                 } else if (response.status === 403) {
-                    // Caso o token forçado seja rejeitado pela API nas chamadas subsequentes,
-                    // mas o login de acesso ao painel ainda funciona no cliente.
-                    console.warn('Token forçado rejeitado pela API para stats. Carregamento de dados falhou.');
-                    // Não chama showLogin() para não expulsar o usuário imediatamente
-                } else {
-                     throw new Error('Falha ao buscar dados da API.');
+                    // Token inválido ou expirado: força logout
+                    showLogin();
                 }
             } catch (error) {
                 console.error('Erro ao carregar stats:', error);
-                statProdutosEl.textContent = 'ERRO';
-                statClientesEl.textContent = 'ERRO';
-                statPedidosEl.textContent = 'ERRO';
             }
         }
         
-        // [Funções loadProductsTable, openEditProductModal, productForm.addEventListener, deleteProduct, 
-        //  loadClientsTable, clientForm.addEventListener, deleteClient e listeners de modal mantidas, 
-        //  pois chamam API_BASE_URL e foram corrigidas para usar showCustomAlert/Confirm.]
-        
         // =============================================================
-        // --- FUNÇÕES DE GERENCIAMENTO DE PRODUTOS ---
+        // --- CRUD PRODUTOS ---
         // =============================================================
         
         async function loadProductsTable() {
@@ -489,7 +538,10 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/api/admin/produtos`, { headers: getAuthHeaders() });
                 if (!response.ok) {
-                    if (response.status === 403) { /* NOP */ } // Permite permanecer logado
+                    if (response.status === 403) {
+                        showLogin(); // Expulsar se token inválido
+                        return;
+                    }
                     throw new Error('Falha ao carregar produtos');
                 }
                 
@@ -507,7 +559,7 @@
                     
                     const row = productsTableBody.insertRow();
                     row.innerHTML = `
-                        <td class="product-image-cell"><img src="${p.imagem_url || 'https://placehold.co/100x100/eee/ccc?text=ELO'}" alt="${p.nome_produto}"></td>
+                        <td class="product-image-cell"><img src="${p.imagem_url || 'https://placehold.co/100x100/eee/ccc?text=ELO'}" alt="${p.nome_produto}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/eee/ccc?text=ELO';"></td>
                         <td>${p.codigo_produto}</td>
                         <td>${p.nome_produto}</td>
                         <td>${formatCurrency(p.preco_minimo)}</td>
@@ -524,12 +576,11 @@
                 productsTableBody.innerHTML = '<tr><td colspan="7" style="color:var(--status-rejected); text-align: center;">Erro ao carregar lista.</td></tr>';
             }
         }
-
-        function openAddProductModal() {
+        
+        document.getElementById('open-add-product-modal').addEventListener('click', () => {
             isEditingProduct = false;
-            productModal.style.display = 'flex';
-            productModalTitle.textContent = 'Adicionar Novo Produto';
-            saveProductBtn.textContent = 'Salvar Produto';
+            document.getElementById('product-modal-title').textContent = 'Adicionar Novo Produto';
+            document.getElementById('save-product-btn').textContent = 'Salvar Produto';
             productForm.reset(); 
             document.getElementById('product-ativo').checked = true;
             document.getElementById('product-estoque').checked = true;
@@ -537,8 +588,9 @@
             productIdInput.value = '';
             productErrorMsg.style.display = 'none';
             productSuccessMsg.style.display = 'none';
-        }
-        
+            productModal.style.display = 'flex';
+        });
+
         async function openEditProductModal(id) {
             isEditingProduct = true;
             productForm.reset();
@@ -547,11 +599,17 @@
             
             try {
                 const response = await fetch(`${API_BASE_URL}/api/admin/produtos/${id}`, { headers: getAuthHeaders() });
-                if (!response.ok) throw new Error('Falha ao buscar produto');
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        showLogin();
+                        return;
+                    }
+                    throw new Error('Falha ao buscar produto');
+                }
                 const p = await response.json();
 
-                productModalTitle.textContent = 'Editar Produto';
-                saveProductBtn.textContent = 'Atualizar Produto';
+                document.getElementById('product-modal-title').textContent = 'Editar Produto';
+                document.getElementById('save-product-btn').textContent = 'Atualizar Produto';
                 
                 productIdInput.value = p.id;
                 document.getElementById('product-codigo').value = p.codigo_produto;
@@ -574,9 +632,10 @@
         
         productForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+
             productErrorMsg.style.display = 'none';
             productSuccessMsg.style.display = 'none';
-            saveProductBtn.disabled = true;
+            document.getElementById('save-product-btn').disabled = true;
 
             const productData = {
                 codigo_produto: document.getElementById('product-codigo').value,
@@ -607,7 +666,10 @@
                     loadProductsTable(); 
                     loadDashboardStats();
                     setTimeout(() => productModal.style.display = 'none', 1500);
-                } else {
+                } else if (response.status === 403) {
+                     showLogin(); // Token expirou
+                }
+                else {
                     productErrorMsg.textContent = data.erro || 'Falha ao salvar.';
                     productErrorMsg.style.display = 'block';
                 }
@@ -616,7 +678,7 @@
                 productErrorMsg.textContent = 'Erro de conexão com a API.';
                 productErrorMsg.style.display = 'block';
             } finally {
-                saveProductBtn.disabled = false;
+                document.getElementById('save-product-btn').disabled = false;
             }
         });
 
@@ -634,6 +696,8 @@
                         showCustomAlert(data.mensagem); 
                         loadProductsTable();
                         loadDashboardStats();
+                    } else if (response.status === 403) {
+                         showLogin();
                     } else {
                         showCustomAlert(data.erro); 
                     }
@@ -644,12 +708,11 @@
         }
 
         // --- Listeners Modal Produto ---
-        document.getElementById('open-add-product-modal').addEventListener('click', openAddProductModal);
         document.getElementById('close-product-modal').addEventListener('click', () => productModal.style.display = 'none');
         document.getElementById('cancel-product').addEventListener('click', () => productModal.style.display = 'none');
 
         // =============================================================
-        // --- FUNÇÕES DE GERENCIAMENTO DE CLIENTES ---
+        // --- CRUD CLIENTES ---
         // =============================================================
         
         async function loadClientsTable() {
@@ -657,7 +720,10 @@
             try {
                 const response = await fetch(`${API_BASE_URL}/api/admin/clientes`, { headers: getAuthHeaders() });
                 if (!response.ok) {
-                    if (response.status === 403) { /* NOP */ } // Permite permanecer logado
+                    if (response.status === 403) { 
+                        showLogin();
+                        return;
+                    }
                     throw new Error('Falha ao carregar clientes');
                 }
                 
@@ -688,8 +754,16 @@
             }
         }
         
+        document.getElementById('open-add-client-modal').addEventListener('click', () => {
+            clientForm.reset();
+            clientErrorMsg.style.display = 'none';
+            clientSuccessMsg.style.display = 'none';
+            clientModal.style.display = 'flex';
+        });
+
         clientForm.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
             clientErrorMsg.style.display = 'none';
             clientSuccessMsg.style.display = 'none';
             document.getElementById('save-client-btn').disabled = true;
@@ -716,7 +790,10 @@
                     loadClientsTable();
                     loadDashboardStats();
                     setTimeout(() => clientModal.style.display = 'none', 1500);
-                } else {
+                } else if (response.status === 403) {
+                    showLogin();
+                }
+                else {
                     clientErrorMsg.textContent = data.erro || 'Falha ao salvar.';
                     clientErrorMsg.style.display = 'block';
                 }
@@ -742,6 +819,8 @@
                         showCustomAlert(data.mensagem); 
                         loadClientsTable();
                         loadDashboardStats();
+                    } else if (response.status === 403) {
+                         showLogin();
                     } else {
                         showCustomAlert(data.erro); 
                     }
@@ -752,14 +831,126 @@
         }
 
         // --- Listeners Modal Cliente ---
-        document.getElementById('open-add-client-modal').addEventListener('click', () => {
-            clientForm.reset();
-            clientErrorMsg.style.display = 'none';
-            clientSuccessMsg.style.display = 'none';
-            clientModal.style.display = 'flex';
-        });
         document.getElementById('close-client-modal').addEventListener('click', () => clientModal.style.display = 'none');
         document.getElementById('cancel-client').addEventListener('click', () => clientModal.style.display = 'none');
+
+
+        // =============================================================
+        // --- CRUD ADMINISTRADORES (NOVO) ---
+        // =============================================================
+        
+        async function loadAdminsTable() {
+            adminsTableBody.innerHTML = '<tr id="admins-loading"><td colspan="4" style="text-align: center;">Carregando...</td></tr>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/users`, { headers: getAuthHeaders() });
+                if (!response.ok) {
+                    if (response.status === 403) { 
+                        showLogin();
+                        return;
+                    }
+                    throw new Error('Falha ao carregar administradores');
+                }
+                
+                const admins = await response.json();
+                adminsTableBody.innerHTML = '';
+
+                if (admins.length === 0) {
+                     adminsTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum administrador cadastrado.</td></tr>';
+                     return;
+                }
+                
+                admins.forEach(a => {
+                    const row = adminsTableBody.insertRow();
+                    row.innerHTML = `
+                        <td>${a.id}</td>
+                        <td>${a.username}</td>
+                        <td>${formatDate(a.data_criacao)}</td>
+                        <td>
+                            <button class="btn-action btn-danger" onclick="deleteAdmin(${a.id})">Excluir</button>
+                        </td>
+                    `;
+                });
+            } catch (error) {
+                console.error('Erro ao carregar administradores:', error);
+                adminsTableBody.innerHTML = '<tr><td colspan="4" style="color:var(--status-rejected); text-align: center;">Erro ao carregar lista.</td></tr>';
+            }
+        }
+        
+        document.getElementById('open-add-admin-modal').addEventListener('click', () => {
+            adminForm.reset();
+            adminErrorMsg.style.display = 'none';
+            adminSuccessMsg.style.display = 'none';
+            adminModal.style.display = 'flex';
+        });
+
+        adminForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            adminErrorMsg.style.display = 'none';
+            adminSuccessMsg.style.display = 'none';
+            document.getElementById('save-admin-btn').disabled = true;
+
+            const adminData = {
+                username: document.getElementById('admin-username').value,
+                chave_admin: document.getElementById('admin-password').value,
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify(adminData)
+                });
+                
+                const data = await response.json();
+
+                if (response.ok) {
+                    adminSuccessMsg.textContent = data.mensagem;
+                    adminSuccessMsg.style.display = 'block';
+                    loadAdminsTable();
+                    setTimeout(() => adminModal.style.display = 'none', 1500);
+                } else if (response.status === 403) {
+                    showLogin();
+                }
+                else {
+                    adminErrorMsg.textContent = data.erro || 'Falha ao salvar.';
+                    adminErrorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                adminErrorMsg.textContent = 'Erro de conexão com a API.';
+                adminErrorMsg.style.display = 'block';
+            } finally {
+                document.getElementById('save-admin-btn').disabled = false;
+            }
+        });
+
+        function deleteAdmin(id) {
+            showCustomConfirm(`Tem certeza que deseja EXCLUIR o administrador ID ${id}?`, async (confirmed) => {
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/admin/users/${id}`, {
+                        method: 'DELETE',
+                        headers: getAuthHeaders()
+                    });
+                    const data = await response.json();
+                    if (response.ok) {
+                        showCustomAlert(data.mensagem); 
+                        loadAdminsTable();
+                    } else if (response.status === 403) {
+                         showLogin();
+                    } else {
+                        showCustomAlert(data.erro); 
+                    }
+                } catch (error) {
+                    showCustomAlert('Erro ao conectar com a API.'); 
+                }
+            });
+        }
+
+        // --- Listeners Modal Admin ---
+        document.getElementById('close-admin-modal').addEventListener('click', () => adminModal.style.display = 'none');
+        document.getElementById('cancel-admin').addEventListener('click', () => adminModal.style.display = 'none');
 
         // --- INICIALIZAÇÃO ---
         if (localStorage.getItem('admin_token')) {
