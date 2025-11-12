@@ -105,7 +105,7 @@ def setup_database():
         if conn: conn.close()
 
 # ======================================================================
-# 2. AUTENTICAÇÃO (COM CORREÇÃO PARA SEU CASO)
+# 2. AUTENTICAÇÃO
 # ======================================================================
 def check_auth(request):
     token = request.headers.get('Authorization')
@@ -130,6 +130,16 @@ def check_auth(request):
     # --------------------------
 
     return ADMIN_SESSIONS.get(token)
+
+def check_client_auth(request):
+    """
+    Função simples para verificar se existe um token no header do cliente,
+    simulando uma sessão válida.
+    """
+    token = request.headers.get('Authorization')
+    if not token: 
+        return False
+    return True
 
 @app.route('/api/admin/login', methods=['POST'])
 def login_admin():
@@ -163,9 +173,53 @@ def login_admin():
             return jsonify({"erro": "Usuário ou senha incorretos"}), 401
     finally:
         if conn: conn.close()
+
+# NOVO: Rota de Login do Cliente (B2B)
+@app.route('/api/cliente/login', methods=['POST'])
+def login_cliente():
+    data = request.json or {}
+    codigo_acesso = data.get('codigo_acesso', '').strip()
+
+    if not codigo_acesso:
+        return jsonify({"erro": "Código de Acesso não fornecido"}), 400
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT id, nome_cliente, status_acesso 
+            FROM suagrafica_clientes 
+            WHERE codigo_acesso = %s
+        """, (codigo_acesso,))
+        
+        cliente = cur.fetchone()
+        
+        if cliente:
+            cliente_id, nome_cliente, status_acesso = cliente
+            
+            if status_acesso != 'Ativo':
+                return jsonify({"erro": "Seu acesso está inativo. Contate o suporte."}), 401
+                
+            # Cria um token de sessão simples
+            cliente_token = hashlib.sha256(f"{cliente_id}:{uuid.uuid4()}".encode()).hexdigest()
+            
+            return jsonify({
+                "mensagem": "Login de Cliente realizado", 
+                "token": cliente_token, 
+                "cliente_id": cliente_id,
+                "nome_cliente": nome_cliente
+            }), 200
+        else:
+            return jsonify({"erro": "Código de acesso incorreto ou cliente não encontrado"}), 401
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"erro": f"Erro interno: {str(e)}"}), 500
+    finally:
+        if conn: conn.close()
         
 # ======================================================================
-# 3. DASHBOARD & CRUD
+# 3. DASHBOARD & CRUD (ADMIN)
 # ======================================================================
 @app.route('/api/admin/dashboard_stats', methods=['GET'])
 def admin_stats():
@@ -312,6 +366,94 @@ def admin_delete_admin(id):
         return jsonify({"erro": str(e)}), 500
     finally:
         if conn: conn.close()
+
+# ======================================================================
+# 4. ROTAS DO CLIENTE (B2B)
+# ======================================================================
+@app.route('/api/cliente/produtos', methods=['GET'])
+def cliente_produtos():
+    if not check_client_auth(request): return jsonify({"erro": "Não autorizado"}), 403
+    
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Filtra apenas produtos ativos e disponíveis
+        cur.execute("SELECT * FROM suagrafica_produtos WHERE esta_ativo = TRUE AND estoque_disponivel = TRUE ORDER BY nome_produto")
+        produtos = cur.fetchall()
+        for p in produtos: 
+            p['preco_minimo'] = float(p['preco_minimo']) 
+        return jsonify(produtos)
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/cliente/pedidos', methods=['GET', 'POST'])
+def cliente_pedidos():
+    if not check_client_auth(request): return jsonify({"erro": "Não autorizado"}), 403
+    conn = get_db_connection()
+    
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        data = request.json or {}
+        
+        if request.method == 'GET':
+            # Obtém cliente_id dos parâmetros da URL
+            cliente_id_from_url = request.args.get('cliente_id')
+            if not cliente_id_from_url:
+                return jsonify({"erro": "ID do Cliente necessário para ver pedidos"}), 400
+            
+            # Busca pedidos apenas do cliente logado
+            cur.execute("""
+                SELECT id, valor_total, status_pedido, data_criacao 
+                FROM suagrafica_pedidos 
+                WHERE cliente_id = %s 
+                ORDER BY data_criacao DESC
+            """, (cliente_id_from_url,))
+            
+            pedidos = cur.fetchall()
+            for p in pedidos: 
+                p['valor_total'] = float(p['valor_total'])
+            return jsonify(pedidos)
+            
+        elif request.method == 'POST':
+            cliente_id = data.get('cliente_id')
+            itens = data.get('itens', [])
+            
+            if not cliente_id or not itens:
+                return jsonify({"erro": "Dados do pedido incompletos"}), 400
+
+            # Calcula o valor total no backend
+            valor_total = sum(float(item['preco_unitario_registrado']) * item['quantidade'] for item in itens)
+            
+            # Cria o novo pedido
+            cur.execute("""
+                INSERT INTO suagrafica_pedidos (cliente_id, valor_total, status_pedido)
+                VALUES (%s, %s, %s) RETURNING id
+            """, (cliente_id, valor_total, 'Aguardando Aprovação'))
+            pedido_id = cur.fetchone()['id']
+            
+            # Adiciona os itens do pedido
+            item_values = [(pedido_id, item['produto_id'], item['quantidade'], item['preco_unitario_registrado']) for item in itens]
+            psycopg2.extras.execute_values(
+                cur,
+                """
+                INSERT INTO suagrafica_pedido_itens (pedido_id, produto_id, quantidade, preco_unitario_registrado)
+                VALUES %s
+                """,
+                item_values,
+                template="(%s, %s, %s, %s)",
+                page_size=100
+            )
+            
+            conn.commit()
+            return jsonify({"mensagem": "Pedido criado com sucesso!", "pedido_id": pedido_id, "valor_total": float(valor_total)}), 201
+
+    except Exception as e:
+        traceback.print_exc()
+        if conn: conn.rollback()
+        return jsonify({"erro": str(e)}), 500
+    finally:
+        if conn: conn.close()
+
 
 if __name__ == '__main__':
     setup_database()
