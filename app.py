@@ -8,10 +8,12 @@ from dotenv import load_dotenv
 import psycopg2
 import psycopg2.extras
 import traceback
+# --- NOVO IMPORT PARA O CHATBOT ---
+import google.generativeai as genai
 
 # ======================================================================
 # API BACKEND - [SUA GRÁFICA] B2B PORTAL
-# Versão: 1.5 (Correção do JSONDecodeError no GET de Pedidos)
+# Versão: 1.6 (Integração do Chatbot EloBot sem alterar funções legadas)
 # ======================================================================
 
 load_dotenv()
@@ -21,6 +23,15 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # 💡 ATENÇÃO: Verifique se sua variável de ambiente DATABASE_URL está configurada
 DATABASE_URL = os.environ.get("DATABASE_URL") 
 ADMIN_SESSIONS = {}
+
+# --- CONFIGURAÇÃO GEMINI (CHATBOT) ---
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    print("🔴 ERRO: GEMINI_API_KEY não encontrada. O Chatbot não funcionará.")
+else:
+    genai.configure(api_key=GEMINI_API_KEY)
+    print("✅ [IA] Gemini configurado com sucesso.")
+
 
 def get_db_connection():
     try:
@@ -518,6 +529,236 @@ def cliente_pedidos():
         return jsonify({"erro": str(e)}), 500
     finally:
         if conn: conn.close()
+
+# ======================================================================
+# 5. MÓDULO CHATBOT (ELO BOT - VENDAS & SUPORTE)
+# Adicionado na versão 1.6
+# ======================================================================
+
+# --- FERRAMENTAS DO BANCO DE DADOS PARA O BOT ---
+def tool_consultar_produtos(termo_busca):
+    """Busca produtos no banco para oferecer ao cliente."""
+    conn = get_db_connection()
+    if not conn: return "Erro de conexão com banco de dados."
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
+            SELECT nome_produto, preco_minimo, multiplos_de, descricao 
+            FROM suagrafica_produtos 
+            WHERE esta_ativo = TRUE AND (nome_produto ILIKE %s OR descricao ILIKE %s)
+            LIMIT 5
+        """, (f'%{termo_busca}%', f'%{termo_busca}%'))
+        produtos = cur.fetchall()
+        if not produtos:
+            return "Não encontrei produtos exatos com esse nome no catálogo."
+        # Converte Decimal para float para o JSON
+        for p in produtos:
+            p['preco_minimo'] = float(p['preco_minimo'])
+        return json.dumps(produtos, ensure_ascii=False)
+    finally:
+        conn.close()
+
+def tool_consultar_pedido(pedido_id, cliente_id_verificacao=None):
+    """Consulta status e detalhes de um pedido específico."""
+    conn = get_db_connection()
+    if not conn: return "Erro de conexão."
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        query = """
+            SELECT id, valor_total, status_pedido, link_pagamento 
+            FROM suagrafica_pedidos 
+            WHERE id = %s
+        """
+        params = [pedido_id]
+        
+        # Adiciona verificação de segurança se o ID do cliente for passado
+        if cliente_id_verificacao:
+            query += " AND cliente_id = %s"
+            params.append(cliente_id_verificacao)
+            
+        cur.execute(query, tuple(params))
+        pedido = cur.fetchone()
+        
+        if not pedido:
+            return "Pedido não encontrado ou não pertence a este cliente."
+            
+        pedido['valor_total'] = float(pedido['valor_total'])
+        return json.dumps(pedido, ensure_ascii=False)
+    finally:
+        conn.close()
+
+def tool_gerar_link_pagamento(pedido_id):
+    """
+    Gera um link e SALVA no banco (simulado).
+    """
+    conn = get_db_connection()
+    if not conn: return "Erro de conexão."
+    try:
+        cur = conn.cursor()
+        
+        # Link Simulado (Substitua por lógica do Mercado Pago se tiver no futuro)
+        link_template = f"https://www.elobrindes.com.br/checkout/pagamento?order={pedido_id}"
+        
+        cur.execute("""
+            UPDATE suagrafica_pedidos 
+            SET link_pagamento = %s, status_pedido = 'Aguardando Pagamento'
+            WHERE id = %s
+            RETURNING id
+        """, (link_template, pedido_id))
+        conn.commit()
+        
+        if cur.fetchone():
+            return f"Link gerado com sucesso: {link_template}"
+        else:
+            return "Erro ao atualizar pedido. Verifique o ID."
+    except Exception as e:
+        return f"Erro ao gerar link: {str(e)}"
+    finally:
+        conn.close()
+
+# --- CONTEXTO E PROMPT DO AGENTE ---
+ELO_BRINDES_KNOWLEDGE = """
+SOBRE A ELO BRINDES (Contexto Institucional):
+- Site: www.elobrindes.com.br
+- Quem somos: Líderes em brindes corporativos personalizados e materiais gráficos.
+- Missão: Fortalecer marcas através de produtos de alta qualidade.
+- Diferenciais: Agilidade na entrega, personalização premium, atendimento consultivo.
+- Catálogo: Canetas, Agendas, Cadernos, Tecnologia (Powerbanks), Têxtil (Camisetas), Gráfica Rápida.
+"""
+
+SYSTEM_PROMPT = f"""
+Você é o **Agente Comercial Virtual da Elo Brindes**, um especialista em vendas B2B e marketing.
+Sua personalidade é: Entusiasta, Profissional, Persuasiva e Resolutiva.
+
+{ELO_BRINDES_KNOWLEDGE}
+
+SEUS OBJETIVOS:
+1. **Vender (Hunter):** Não apenas responda. Ofereça produtos.
+   - Se o cliente pede "Caneta", pergunte "É para algum evento específico? Temos modelos premium de metal ou promocionais de plástico."
+   - **Técnica de Upsell:** Sempre sugira quantidades maiores para reduzir o custo unitário.
+   - **Técnica de Cross-sell:** Se ele comprar Canetas, sugira Cadernos ou Blocos.
+   - **Prevenção de Abandono:** Se o cliente parecer em dúvida sobre preço, enfatize a qualidade e o ROI (Retorno sobre Investimento) de brindes para a marca dele.
+
+2. **Dar Suporte (Farmer):** Resolver dúvidas de pedidos existentes rapidamente para gerar confiança.
+   - Se o cliente quiser pagar, USE A FERRAMENTA `gerar_pagamento` imediatamente. Não mande ele esperar.
+
+3. **Operacional:**
+   - Você TEM acesso ao banco de dados através de ferramentas JSON.
+   - Se precisar de dados, solicite a ação correta no JSON de saída.
+
+FORMATO DE RESPOSTA (OBRIGATÓRIO):
+Você DEVE responder SEMPRE em JSON estrito com dois campos:
+1. "botResponse": Sua fala com o cliente (use emojis, seja cordial).
+2. "actionRequired": Um objeto descrevendo se você precisa consultar o banco.
+   - Se nada for necessário: {{ "type": "none" }}
+   - Para buscar produtos: {{ "type": "search_product", "term": "termo da busca" }}
+   - Para ver status pedido: {{ "type": "check_order", "order_id": 123 }}
+   - Para gerar link pagamento: {{ "type": "generate_payment", "order_id": 123 }}
+
+EXEMPLO DE INTERAÇÃO DE VENDAS:
+Cliente: "Quero canetas."
+Bot (Pensamento): Buscar canetas no banco.
+JSON Saída:
+{{
+  "botResponse": "Excelente escolha! As canetas são brindes de alto impacto. Vou buscar nossos modelos mais vendidos para você...",
+  "actionRequired": {{ "type": "search_product", "term": "caneta" }}
+}}
+
+EXEMPLO DE FECHAMENTO:
+Cliente: "Pode gerar o link do pedido 50?"
+JSON Saída:
+{{
+  "botResponse": "Claro! Estou gerando seu link seguro da Elo Brindes agora mesmo...",
+  "actionRequired": {{ "type": "generate_payment", "order_id": 50 }}
+}}
+"""
+
+# --- ROTA DO CHAT ---
+@app.route('/api/chat_vendas', methods=['POST'])
+def chat_endpoint():
+    # Verifica API KEY para não quebrar se não tiver configurado
+    if not GEMINI_API_KEY:
+        return jsonify({"response": "O Chatbot está temporariamente indisponível (Falta API KEY).", "action_taken": "error"}), 503
+
+    data = request.json or {}
+    history = data.get('history', []) 
+    user_msg = data.get('message', '')
+    client_id = data.get('client_id') 
+    
+    model = genai.GenerativeModel(
+        'gemini-2.5-flash-preview-09-2025',
+        system_instruction=SYSTEM_PROMPT
+    )
+    
+    gemini_history = []
+    for h in history:
+        role = 'user' if h['role'] == 'user' else 'model'
+        gemini_history.append({'role': role, 'parts': [h['content']]})
+    
+    gemini_history.append({'role': 'user', 'parts': [user_msg]})
+
+    try:
+        # 1. Primeira Chamada (Decisão)
+        response = model.generate_content(
+            gemini_history,
+            generation_config=genai.types.GenerationConfig(
+                temperature=0.7,
+                response_mime_type="application/json"
+            )
+        )
+        
+        resp_text = response.text.replace('```json', '').replace('```', '').strip()
+        ai_data = json.loads(resp_text)
+        
+        action = ai_data.get('actionRequired', {'type': 'none'})
+        bot_text = ai_data.get('botResponse', '')
+        
+        # 2. Execução de Ferramentas
+        tool_result = None
+        
+        if action['type'] == 'search_product':
+            print(f"🔍 [Bot] Buscando produtos: {action['term']}")
+            tool_result = tool_consultar_produtos(action['term'])
+            
+        elif action['type'] == 'check_order':
+            print(f"🔍 [Bot] Verificando pedido: {action['order_id']}")
+            tool_result = tool_consultar_pedido(action['order_id'], client_id)
+            
+        elif action['type'] == 'generate_payment':
+            print(f"💰 [Bot] Gerando pagamento pedido: {action['order_id']}")
+            tool_result = tool_gerar_link_pagamento(action['order_id'])
+
+        # 3. Segunda Chamada (Se houve ferramenta)
+        if tool_result:
+            prompt_com_dados = f"""
+            DADOS OBTIDOS DO SISTEMA:
+            {tool_result}
+            
+            Com base nesses dados acima, dê a resposta final ao cliente. 
+            Se for produto, apresente de forma atraente com preço.
+            Se for link, envie o link.
+            """
+            
+            final_response = model.generate_content(
+                [{'role': 'user', 'parts': [prompt_com_dados]}],
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.7,
+                    response_mime_type="application/json"
+                )
+            )
+            
+            final_resp_text = final_response.text.replace('```json', '').replace('```', '').strip()
+            final_json = json.loads(final_resp_text)
+            bot_text = final_json.get('botResponse', 'Aqui estão os dados.')
+
+        return jsonify({
+            "response": bot_text,
+            "action_taken": action['type']
+        })
+
+    except Exception as e:
+        print(f"🔴 Erro Chatbot: {e}")
+        return jsonify({"response": "Desculpe, tive um lapso de memória momentâneo. Pode repetir?", "error": str(e)}), 500
 
 
 if __name__ == '__main__':
