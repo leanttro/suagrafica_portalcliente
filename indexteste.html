@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal do Cliente | [SUA GRÁFICA] B2B</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- TEMA (Cores do Admin) --- */
+        :root {
+            --background: #1A0505; 
+            --surface: #2B0C0C; 
+            --border: #440F0F; 
+            --text-primary: #F8FAFC; 
+            --text-secondary: #D9CFCF; 
+            --accent: #8B0000; /* Vinho / Dark Red */
+            --accent-hover: #5D0000; 
+            --status-confirmed: #10B981; 
+            --status-rejected: #EF4444;
+            --status-available: #22C55E; /* Verde */
+
+            /* ALTERAÇÃO AQUI: AUMENTADO PARA 300PX PARA O LOGO NÃO CORTAR NO DESKTOP */
+            --sidebar-width: 300px;
+            --content-bg: #F8FAFC; /* Branco/Claro para o Conteúdo Principal */
+            --content-text: #1A0505; /* Texto escuro no conteúdo claro */
+
+            --font-body: 'Inter', sans-serif;
+            --font-heading: 'Montserrat', sans-serif;
+            
+            /* CHATBOT THEME ADAPTATION */
+            --chat-bg-color: var(--content-bg); /* Fundo principal: Branco */
+            --chat-dark-gray: #f4f4f4; /* Fundo do chat: Cinza claro */
+            --chat-text-color: var(--content-text); /* Texto principal: Preto escuro */
+            --chat-accent-color: var(--accent); /* Destaque: Vinho B2B */
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: var(--font-body); background-color: var(--content-bg);
+            color: var(--content-text); line-height: 1.6;
+            min-height: 100vh; display: flex;
+            overflow-x: hidden; /* Garantia global para evitar rolagem horizontal desnecessária */
+        }
+        
+        /* --- LOGIN (Reuso do estilo Admin) --- */
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--background); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .login-box { background-color: var(--surface); padding: 3rem; border-radius: 12px; border: 1px solid var(--border); width: 100%; max-width: 400px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+        .login-box h2 { font-size: 2rem; margin-bottom: 2rem; color: var(--text-primary); }
+        .input-group { margin-bottom: 1.5rem; text-align: left; }
+        .input-group label { display: block; margin-bottom: 0.5rem; color: var(--text-secondary); }
+        .input-group input { width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--border); background-color: var(--background); color: var(--text-primary); font-family: var(--font-body); }
+        .input-group input:focus { border-color: var(--accent); outline: none; }
+        .logo-img { height: 60px; margin-bottom: 1.5rem; border-radius: 8px;} 
+        .btn { padding: 0.8rem 1.5rem; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background-color: var(--accent); color: var(--text-primary); }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+        .error-msg { color: var(--status-rejected); margin-top: 1rem; display: none; }
+
+        /* --- LAYOUT PRINCIPAL (XBZ Style) --- */
+        #client-portal { display: none; flex: 1; }
+        
+        /* Sidebar (Estilo XB_Z) - DESKTOP USA --sidebar-width: 300px; */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--surface);
+            color: var(--text-secondary);
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .sidebar-logo {
+            text-align: center;
+            padding: 10px 20px 30px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sidebar-logo img {
+            height: 40px;
+            margin-bottom: 5px;
+        }
+        .sidebar-logo p {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 20px 0;
+        }
+        .nav-menu li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            gap: 10px;
+        }
+        .nav-menu li a i {
+            width: 20px;
+            text-align: center;
+        }
+        .nav-menu li a:hover, .nav-menu li a.active {
+            color: var(--text-primary);
+            background-color: var(--accent-hover);
+            border-left: 3px solid var(--accent);
+        }
+        .nav-menu li a.active {
+             border-left: 3px solid var(--text-primary);
+        }
+        
+        /* Conteúdo Principal - DESKTOP USA flex: 1; */
+        .main-content {
+            flex: 1;
+            padding: 0;
+            overflow-y: auto;
+        }
+
+        /* Header do Conteúdo Principal */
+        .content-header {
+            background-color: var(--content-bg);
+            padding: 15px 30px;
+            border-bottom: 1px solid #E5E7EB;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .content-header h1 {
+            font-size: 1.5rem;
+            color: var(--accent);
+        }
+        .user-info {
+            font-size: 0.9rem;
+            color: var(--content-text);
+            font-weight: 500;
+        }
+        .btn-logout {
+            padding: 0.5rem 1rem; background: transparent; border: 1px solid var(--accent);
+            color: var(--accent); border-radius: 6px; cursor: pointer; transition: all 0.3s;
+        }
+        .btn-logout:hover { background: var(--accent); color: var(--text-primary); }
+
+        /* --- DASHBOARD --- */
+        .content-section {
+            padding: 30px;
+        }
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background: #ffffff;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+        .stat-card .number {
+            font-size: 2.5rem;
+            font-family: var(--font-heading);
+            color: var(--accent);
+            line-height: 1.2;
+        }
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: #6B7280;
+        }
+
+        /* --- PRODUTOS (Catálogo) --- */
+        .product-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        .product-item {
+            display: flex;
+            gap: 15px;
+            background: #ffffff;
+            border: 1px solid #E5E7EB;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            align-items: center;
+        }
+        .product-image-box {
+            flex-shrink: 0;
+            width: 80px;
+            height: 80px;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .product-image-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .product-details {
+            flex-grow: 1;
+        }
+        .product-details h3 {
+            font-size: 1.1rem;
+            color: var(--content-text);
+            margin-bottom: 5px;
+        }
+        .product-details p {
+            font-size: 0.85rem;
+            color: #6B7280;
+            margin-bottom: 5px;
+        }
+        .price-info {
+            display: block;
+            font-weight: 700;
+            color: var(--accent);
+        }
+        .status-badge {
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        .status-available { background-color: #D1FAE5; color: var(--status-available); }
+        .status-unavailable { background-color: #FEE2E2; color: var(--status-rejected); }
+        
+        /* 💡 ESTILOS STATUS DE PEDIDO */
+        .status-AguardandoAprovação { background-color: #FEF3C7; color: #D97706; }
+        .status-AguardandoPagamento { background-color: #DBEAFE; color: #3B82F6; }
+        .status-Pago { background-color: #D1FAE5; color: #065F46; }
+        .status-EmProdução { background-color: #E5E7EB; color: #6B7280; }
+        .status-ProntoparaRetirada, .status-Concluído { background-color: #D1FAE5; color: #065F46; }
+        .status-Cancelado, .status-Rejeitado { background-color: #FEE2E2; color: #EF4444; }
+
+        .product-actions {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+        }
+        .product-actions input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            text-align: center;
+            border: 1px solid #D1D5DB;
+            border-radius: 4px;
+            background: #f9fafb;
+            font-size: 0.9rem;
+        }
+        .btn-add-cart {
+            background-color: var(--status-available);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 700;
+            font-size: 0.8rem;
+        }
+        .btn-add-cart:hover {
+            background-color: #15803d;
+        }
+
+        /* --- TABELA PEDIDOS --- */
+        .orders-table {
+            width: 100%; border-collapse: collapse; 
+            background-color: #ffffff; 
+            border-radius: 8px; overflow: hidden; 
+            border: 1px solid #E5E7EB;
+        }
+        .orders-table th, .orders-table td {
+            padding: 1rem; text-align: left; border-bottom: 1px solid #F3F4F6;
+            color: var(--content-text);
+        }
+        .orders-table th { background-color: #F9FAFB; color: #4B5563; font-weight: 600; font-size: 0.9rem; }
+        
+
+        /* --- FOOTER (Abaixo do Nav) --- */
+        .sidebar-footer {
+            margin-top: auto;
+            padding: 10px 20px 0;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #4B5563;
+            border-top: 1px solid var(--border);
+        }
+
+        /* --- Carrinho (Lateral - Opcional) --- */
+        .cart-overlay {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 350px;
+            height: 100%;
+            background-color: #ffffff;
+            z-index: 500;
+            box-shadow: -4px 0 12px rgba(0,0,0,0.1);
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+            display: flex;
+            flex-direction: column;
+        }
+        .cart-overlay.open {
+            transform: translateX(0);
+        }
+        .cart-header {
+            padding: 15px 20px;
+            background-color: var(--accent);
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+        .cart-close {
+            background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer;
+        }
+        .cart-items {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px dashed #E5E7EB;
+        }
+        .cart-item-details {
+            flex-grow: 1;
+        }
+        .cart-item-details p {
+            font-size: 0.9rem;
+            line-height: 1.3;
+        }
+        .cart-total-box {
+            padding: 20px;
+            border-top: 1px solid #E5E7EB;
+            text-align: right;
+        }
+        .cart-total-box p {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--content-text);
+            margin-bottom: 10px;
+        }
+        .btn-checkout {
+            width: 100%;
+            background-color: var(--accent);
+            color: var(--text-primary);
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 700;
+        }
+
+        /* --- MEDIA QUERY MOBILE (CORREÇÕES DE ROLAGEM E RESPONSIVIDADE) --- */
+        @media (max-width: 768px) {
+            
+            /* Correções de Sidebar Colapsada (Largura de 70px) */
+            .sidebar {
+                width: 70px; 
+                padding: 10px 0;
+            }
+            .sidebar-logo {
+                padding: 10px;
+            }
+            .sidebar-logo p {
+                display: none;
+            }
+            .nav-menu li a span {
+                display: none; 
+            }
+            .nav-menu li a {
+                justify-content: center;
+            }
+            
+            /* Correção do Conteúdo Principal para usar o espaço restante sem overflow */
+            .main-content {
+                /* Garante que o conteúdo use o espaço restante e a rolagem horizontal suma */
+                flex: 1;
+                width: calc(100vw - 70px); /* Ocupa o restante da largura menos a sidebar colapsada */
+                margin-left: 70px; /* Empurra o conteúdo para o lado */
+                min-width: 0; /* CRUCIAL: Previne que elementos internos forcem a largura */
+            }
+
+            /* Empilhamento dos Cards do Dashboard */
+            .dashboard-grid {
+                grid-template-columns: 1fr; 
+            }
+            
+            /* Ajuste para a Tabela de Pedidos (Permite rolagem horizontal apenas na tabela) */
+            .orders-table {
+                display: block;
+                width: 100%;
+                overflow-x: auto; 
+                -webkit-overflow-scrolling: touch; 
+                white-space: nowrap; 
+            }
+            
+            /* Ajuste do Carrinho */
+            .cart-overlay {
+                width: 100%;
+            }
+            
+            /* Ajuste dos Produtos (Um item embaixo do outro) */
+            .product-item {
+                flex-direction: column; 
+                align-items: flex-start;
+            }
+            .product-actions {
+                flex-direction: row; 
+                width: 100%;
+                justify-content: flex-end;
+                margin-top: 10px;
+            }
+            .product-actions input[type="number"] {
+                 width: 100px;
+            }
+
+            /* Ajuste do Chatbot (Garante que não saia da tela) */
+            .chatbot-window {
+                left: 15px; 
+                right: 15px;
+                width: calc(100% - 30px);
+                max-width: none;
+                height: 85vh; 
+                max-height: 85vh;
+            }
+            
+            .floating-chatbot {
+                left: 0; 
+                right: 0;
+            }
+
+            #chatbotButtonContainer {
+                max-width: 100%;
+                margin: 0 auto; 
+                padding: 0 15px;
+            }
+        }
+        
+        /* ---------------------------------------------------------------------- */
+        /* --- CSS DO CHATBOT (ADAPTAÇÃO PARA TEMA B2B VINHO/DARK) --- */
+        /* ---------------------------------------------------------------------- */
+        
+        @keyframes glowing-chat-border {
+            0% { box-shadow: 0 0 0px var(--accent); }
+            50% { box-shadow: 0 0 20px var(--accent); }
+            100% { box-shadow: 0 0 0px var(--accent); }
+        }
+        
+        .floating-chatbot {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            left: 15px;
+            z-index: 9999;
+        }
+
+        #chatbotButtonContainer {
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: 0;
+            position: relative;
+        }
+
+        .chatbot-preview-button {
+            width: 100%;
+            background-color: var(--chat-dark-gray); 
+            border: 1px solid rgba(139, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 1rem;
+            cursor: pointer;
+            box-shadow: 0 8px 25px rgba(139, 0, 0, 0.4);
+            transition: all 0.3s ease;
+            animation: glowing-chat-border 2s infinite;
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+        }
+
+        .chatbot-preview-button:hover {
+            transform: scale(1.03);
+            box-shadow: 0 12px 35px rgba(139, 0, 0, 0.6);
+        }
+        
+        .chatbot-preview-button.active {
+            opacity: 0;
+            transform: scale(0.9);
+            visibility: hidden;
+            height: 0;
+            padding: 0;
+        }
+
+        .preview-close {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: none;
+            border: none;
+            color: #777;
+            font-size: 0.8rem;
+            cursor: pointer;
+            padding: 5px;
+            z-index: 100;
+        }
+        
+        .chatbot-minimized-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--chat-accent-color);
+            border-radius: 50%;
+            box-shadow: 0 8px 25px rgba(139, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: #FFFFFF;
+            cursor: pointer;
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.5);
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-minimized-icon.minimized {
+            opacity: 1;
+            visibility: visible;
+            transform: scale(1);
+            animation: none;
+        }
+
+        .chatbot-preview-button.minimized {
+            opacity: 0;
+            visibility: hidden;
+            height: 0;
+            padding: 0;
+        }
+
+        .chatbot-minimized-icon.active {
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.5);
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .preview-avatar {
+            width: 35px;
+            height: 35px;
+            background: var(--chat-accent-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-heading);
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: #FFFFFF;
+            flex-shrink: 0;
+        }
+
+        .preview-info strong {
+            font-family: var(--font-body);
+            font-weight: 700;
+            color: var(--chat-text-color);
+            font-size: 0.9rem;
+        }
+        
+        .preview-info strong span {
+            color: var(--chat-accent-color);
+            text-transform: lowercase;
+        }
+
+        .preview-info span {
+            display: block;
+            font-size: 0.75rem;
+            color: #888;
+        }
+
+        .preview-message-bubble {
+            background-color: rgba(139, 0, 0, 0.1);
+            border-left: 3px solid var(--chat-accent-color);
+            padding: 0.8rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            line-height: 1.5;
+            color: var(--chat-text-color);
+        }
+
+        .preview-message-bubble #preview-message-text {
+            transition: opacity 0.3s ease-in-out;
+        }
+        
+        .chatbot-window {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            left: 15px;
+            width: calc(100% - 30px);
+            max-width: 400px;
+            height: 70vh;
+            max-height: 550px;
+            background-color: var(--chat-dark-gray);
+            border: 1px solid rgba(139, 0, 0, 0.3);
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 9998;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+        
+        .chatbot-window.active {
+            display: flex;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .chatbot-header {
+            background: linear-gradient(135deg, var(--chat-accent-color), var(--accent-hover));
+            padding: 1.2rem 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+        }
+
+        .chatbot-header-avatar {
+            width: 45px;
+            height: 45px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #FFFFFF;
+            flex-shrink: 0;
+        }
+
+        .chatbot-header-info h3 {
+            font-family: var(--font-heading);
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            margin-bottom: 0.2rem;
+            color: #FFFFFF;
+            text-transform: uppercase;
+        }
+        
+        .chatbot-header-info h3 span {
+            color: var(--chat-dark-gray);
+            text-transform: lowercase;
+            opacity: 0.8;
+        }
+
+        .chatbot-header-info p {
+            font-size: 0.75rem;
+            opacity: 0.9;
+            color: #FFFFFF;
+        }
+
+        .chatbot-close {
+            margin-left: auto;
+            background: none;
+            border: none;
+            color: #FFFFFF;
+            font-size: 1.5rem;
+            cursor: pointer;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background-color 0.3s ease;
+        }
+
+        .chatbot-close:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .chatbot-messages {
+            flex: 1;
+            padding: 1rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background-color: var(--chat-bg-color);
+        }
+
+        .chatbot-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chatbot-messages::-webkit-scrollbar-track {
+            background: #e0e0e0;
+        }
+
+        .chatbot-messages::-webkit-scrollbar-thumb {
+            background: var(--chat-accent-color);
+            border-radius: 3px;
+        }
+        
+        .message {
+            display: flex;
+            gap: 0.8rem;
+            max-width: 90%;
+        }
+
+        .message.bot {
+            align-self: flex-start;
+        }
+        
+        .message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+            color: #FFFFFF;
+        }
+
+        .message.bot .message-avatar {
+             background: var(--chat-accent-color);
+        }
+
+        .message.user .message-avatar {
+             background-color: var(--content-text); /* Preto do tema */
+             color: #FFFFFF;
+        }
+
+        .message-content {
+            max-width: calc(100% - 45px);
+        }
+
+        .message-bubble {
+            padding: 0.8rem 1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            word-wrap: break-word;
+            color: var(--chat-text-color);
+        }
+        
+        .message.bot .message-bubble {
+            background-color: var(--chat-dark-gray);
+            border-bottom-left-radius: 4px;
+        }
+        
+        .message.user .message-bubble {
+            background-color: var(--chat-accent-color);
+            color: #FFFFFF;
+            border-bottom-right-radius: 4px;
+        }
+        
+        .message-bubble strong {
+            font-weight: 700;
+        }
+
+        .message-time {
+            font-size: 0.7rem;
+            color: #777;
+            margin-top: 0.4rem;
+        }
+        
+        .message.user .message-time {
+            text-align: right;
+        }
+
+        /* Indicador de "digitando" */
+        .typing-indicator {
+            display: flex;
+            gap: 0.3rem;
+            padding: 0.8rem 1rem;
+        }
+
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background-color: var(--chat-accent-color);
+            border-radius: 50%;
+            animation: typing 1.4s infinite;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes typing {
+            0%, 60%, 100% {
+                opacity: 0.3;
+                transform: translateY(0);
+            }
+            30% {
+                opacity: 1;
+                transform: translateY(-8px);
+            }
+        }
+
+        .chatbot-input-area {
+            padding: 1rem;
+            background-color: var(--chat-dark-gray);
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 0.8rem;
+        }
+
+        .chatbot-input {
+            flex: 1;
+            background-color: #FFFFFF;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            padding: 0.8rem 1rem;
+            color: var(--chat-text-color);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .chatbot-input:focus {
+            border-color: var(--chat-accent-color);
+            background-color: #FFFFFF;
+        }
+
+        .chatbot-input::placeholder {
+            color: #777;
+        }
+
+        .chatbot-send {
+            background: var(--chat-accent-color);
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #FFFFFF;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .chatbot-send:hover {
+            transform: scale(1.05);
+            background-color: var(--accent-hover);
+        }
+
+        .chatbot-send:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        @media (min-width: 768px) {
+             #chatbotButtonContainer {
+                max-width: 400px;
+            }
+            .chatbot-window {
+                left: auto;
+                right: 30px;
+                width: 400px;
+                height: 550px;
+            }
+            
+            .chatbot-minimized-icon {
+                right: 0; 
+                bottom: 0;
+            }
+            
+             .chatbot-preview-button {
+                margin-left: auto;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <img src="logo.png" alt="[SUA GRÁFICA] Logo" class="logo-img">
+            <h2>Portal B2B - Cliente</h2>
+            <form id="login-form">
+                <div class="input-group">
+                    <label for="client-codigo">Código de Acesso (Senha)</label>
+                    <input type="text" id="client-codigo" required value="12345" placeholder="Digite seu código de acesso">
+                </div>
+                <button type="button" class="btn btn-primary" style="width: 100%;" onclick="handleLogin(event)">Entrar</button> 
+                <p class="error-msg" id="login-error">Código inválido ou cliente inativo.</p>
+            </form>
+        </div>
+    </div>
+
+    <div id="client-portal">
+        <div class="sidebar">
+            <div class="sidebar-logo">
+                <img src="logo.png" alt="[SUA GRÁFICA] Logo">
+                <p id="client-name-display">[Nome do Cliente]</p>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="#" class="nav-link active" data-view="dashboard"><i class="fas fa-tachometer-alt"></i> <span>Dashboard</span></a></li>
+                <li><a href="#" class="nav-link" data-view="produtos"><i class="fas fa-boxes"></i> <span>Produtos</span></a></li>
+                <li><a href="#" class="nav-link" data-view="pedidos"><i class="fas fa-receipt"></i> <span>Pedidos</span></a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <p>&copy; [SUA GRÁFICA] B2B</p>
+                <p>Versão 1.0</p>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="content-header">
+                <h1 id="page-title">Dashboard</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" id="open-cart-btn"><i class="fas fa-shopping-cart"></i> Carrinho (<span id="cart-count">0</span>)</button>
+                    <button class="btn-logout" id="logout-btn">Sair <i class="fas fa-sign-out-alt"></i></button>
+                </div>
+            </div>
+
+            <div class="content-view" id="dashboard-view">
+                <div class="content-section">
+                    <div class="dashboard-grid">
+                        <div class="stat-card">
+                            <div class="number" id="stat-pedidos-abertos">-</div>
+                            <div class="label">Pedidos em Aberto</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="number" id="stat-pedidos-prontos">-</div>
+                            <div class="label">Prontos para Retirada</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="number" id="stat-valor-total">-</div>
+                            <div class="label">Valor Total Pendente</div>
+                        </div>
+                    </div>
+                    
+                    <h2>Últimos Pedidos</h2>
+                    <table class="orders-table" id="last-orders-table">
+                        <thead>
+                            <tr><th>Código</th><th>Data</th><th>Valor</th><th>Status</th><th>Ações</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" style="text-align: center;">Carregando últimos pedidos...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="content-view" id="produtos-view" style="display:none;">
+                 <div class="content-section">
+                    <h1>Catálogo de Produtos</h1>
+                    <div class="product-grid" id="product-list">
+                         <p>Carregando catálogo...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-view" id="pedidos-view" style="display:none;">
+                <div class="content-section">
+                    <h1>Histórico de Pedidos</h1>
+                    <table class="orders-table" id="all-orders-table">
+                        <thead>
+                            <tr><th>Código</th><th>Data</th><th>Valor</th><th>Status</th><th>Detalhes</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" style="text-align: center;">Carregando histórico completo...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cart-overlay" id="cart-overlay">
+        <div class="cart-header">
+            Carrinho
+            <button class="cart-close" id="close-cart-btn">&times;</button>
+        </div>
+        <div class="cart-items" id="cart-items">
+            <p style="color: #6B7280; text-align: center;">Seu carrinho está vazio.</p>
+        </div>
+        <div class="cart-total-box">
+            <p>Total: <span id="cart-total">R$ 0,00</span></p>
+            <button class="btn-checkout" id="checkout-btn">Finalizar Pedido</button>
+        </div>
+    </div>
+    
+    <div class="floating-chatbot" style="display:none;" id="floatingChatbot">
+        <div id="chatbotButtonContainer">
+             <div class="chatbot-minimized-icon" id="minimizedIcon" aria-label="Abrir Chatbot">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="chatbot-preview-button" id="chatbotButton" aria-label="Abrir ELO Bot">
+                <button class="preview-close" id="previewClose" aria-label="Minimizar Preview">
+                    <i class="fas fa-times"></i>
+                </button>
+                <div class="preview-header">
+                    <div class="preview-avatar">E</div>
+                    <div class="preview-info">
+                        <strong>ELO<span>bot</span></strong>
+                        <span>Assistente Comercial</span>
+                    </div>
+                </div>
+                <div class="preview-message-bubble">
+                    <span id="preview-message-text">Olá! 👋 Posso te ajudar com um pedido ou orçamento?</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chatbot-window" id="chatbotWindow">
+            <div class="chatbot-header">
+                <div class="chatbot-header-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="chatbot-header-info">
+                    <h3>ELO<span>bot</span></h3>
+                    <p>Agente Comercial Virtual</p>
+                </div>
+                <button class="chatbot-close" id="chatbotClose" aria-label="Fechar chat">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="chatbot-messages" id="chatbotMessages">
+                </div>
+
+            <div class="chatbot-input-area">
+                <input 
+                    type="text" 
+                    class="chatbot-input" 
+                    id="chatbotInput" 
+                    placeholder="Digite sua mensagem (ex: Status do pedido 123)..."
+                    autocomplete="off"
+                >
+                <button class="chatbot-send" id="chatbotSend" aria-label="Enviar mensagem">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_BASE_URL = 'https://suagrafica-portalcliente.onrender.com';
+        // --- CHATBOT CONFIG ---
+        const CHATBOT_API_URL = `${API_BASE_URL}/api/chat_vendas`;
+        // ----------------------
+        
+        let CLIENT_ID = null;
+        let CLIENT_TOKEN = null;
+        let cart = {};
+        let productsMap = {};
+
+        // --- Seletores DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const clientPortal = document.getElementById('client-portal');
+        const loginForm = document.getElementById('login-form');
+        const logoutButton = document.getElementById('logout-btn');
+        const loginErrorMsg = document.getElementById('login-error');
+        const clientNameDisplay = document.getElementById('client-name-display');
+        const pageTitle = document.getElementById('page-title');
+        const productList = document.getElementById('product-list');
+
+        // --- Carrinho ---
+        const cartOverlay = document.getElementById('cart-overlay');
+        const cartCount = document.getElementById('cart-count');
+        const cartTotal = document.getElementById('cart-total');
+        const cartItemsContainer = document.getElementById('cart-items');
+        const openCartBtn = document.getElementById('open-cart-btn');
+        const closeCartBtn = document.getElementById('close-cart-btn');
+        const checkoutBtn = document.getElementById('checkout-btn');
+        
+        // --- Chatbot Seletores ---
+        const floatingChatbot = document.getElementById('floatingChatbot');
+        const chatbotButton = document.getElementById('chatbotButton');
+        const chatbotWindow = document.getElementById('chatbotWindow');
+        const chatbotClose = document.getElementById('chatbotClose');
+        const chatbotInput = document.getElementById('chatbotInput');
+        const chatbotSend = document.getElementById('chatbotSend');
+        const chatbotMessages = document.getElementById('chatbotMessages');
+        const previewClose = document.getElementById('previewClose');
+        const minimizedIcon = document.getElementById('minimizedIcon');
+        const previewMessageEl = document.getElementById('preview-message-text');
+
+
+        // --- Utils ---
+        function getAuthHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${CLIENT_TOKEN}`
+            };
+        }
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+        }
+        
+        function getStatusClass(status) {
+            const statusKey = status.replace(/\s/g, ''); 
+            const statusMap = {
+                'AguardandoAprovação': 'status-AguardandoAprovação',
+                'AguardandoPagamento': 'status-AguardandoPagamento',
+                'Pago': 'status-Pago',
+                'EmProdução': 'status-EmProdução',
+                'ProntoparaRetirada': 'status-ProntoparaRetirada',
+                'Concluído': 'status-Concluído',
+                'Cancelado': 'status-Cancelado',
+                'Rejeitado': 'status-Rejeitado',
+            };
+            return statusMap[statusKey] || 'status-EmProdução'; 
+        }
+
+        // --- Lógica de View (Troca de Painel) ---
+        function switchView(viewId) {
+            document.querySelectorAll('.content-view').forEach(view => {
+                view.style.display = 'none';
+            });
+            document.getElementById(`${viewId}-view`).style.display = 'block';
+
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+                if (link.dataset.view === viewId) {
+                    link.classList.add('active');
+                    pageTitle.textContent = link.querySelector('span').textContent;
+                }
+            });
+
+            if (viewId === 'produtos') loadProductsCatalog();
+            if (viewId === 'pedidos') loadOrderHistory();
+            if (viewId === 'dashboard') loadDashboardStats();
+        }
+
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                switchView(e.currentTarget.dataset.view);
+            });
+        });
+
+        // --- AUTENTICAÇÃO ---
+        function showPortal() {
+            loginScreen.style.display = 'none';
+            clientPortal.style.display = 'flex';
+            clientNameDisplay.textContent = localStorage.getItem('client_name') || 'Cliente';
+            floatingChatbot.style.display = 'block'; // Mostra o chatbot
+            switchView('dashboard');
+            loadCartFromStorage();
+            startChatbotSession(); // Inicia a sessão do chatbot
+        }
+        function showLogin() {
+            loginScreen.style.display = 'flex';
+            clientPortal.style.display = 'none';
+            floatingChatbot.style.display = 'none'; // Esconde o chatbot
+            
+            localStorage.removeItem('client_token');
+            localStorage.removeItem('client_id');
+            localStorage.removeItem('client_name');
+            // Reseta variáveis do Chatbot ao fazer Logout
+            conversationHistory = [];
+            
+            cart = {};
+            updateCartUI();
+        }
+        
+        async function handleLogin(e) {
+             e.preventDefault();
+             
+             const codigo = document.getElementById('client-codigo').value; 
+             loginErrorMsg.style.display = 'none';
+             loginForm.querySelector('button').disabled = true;
+
+             try {
+                 const response = await fetch(`${API_BASE_URL}/api/cliente/login`, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({ codigo_acesso: codigo })
+                 });
+
+                 const data = await response.json();
+
+                 if (response.ok) {
+                     CLIENT_TOKEN = data.token;
+                     CLIENT_ID = data.cliente_id;
+                     localStorage.setItem('client_token', data.token); 
+                     localStorage.setItem('client_id', data.cliente_id);
+                     localStorage.setItem('client_name', data.nome_cliente);
+                     showPortal();
+                 } else {
+                     loginErrorMsg.textContent = data.erro || 'Código inválido ou cliente inativo.';
+                     loginErrorMsg.style.display = 'block';
+                 }
+             } catch (error) {
+                 loginErrorMsg.textContent = 'Erro de conexão com o servidor.';
+                 loginErrorMsg.style.display = 'block';
+             } finally {
+                 loginForm.querySelector('button').disabled = false;
+             }
+         }
+
+        logoutButton.addEventListener('click', showLogin);
+
+        window.onload = function() {
+            CLIENT_TOKEN = localStorage.getItem('client_token');
+            CLIENT_ID = localStorage.getItem('client_id');
+            if (CLIENT_TOKEN && CLIENT_ID) {
+                showPortal();
+            } else {
+                showLogin();
+            }
+        };
+
+
+        // --- DASHBOARD ---
+        async function loadDashboardStats() {
+            loadOrderHistory(true);
+        }
+
+        // --- CATÁLOGO DE PRODUTOS ---
+        async function loadProductsCatalog() {
+            productList.innerHTML = '<p>Carregando catálogo...</p>';
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/cliente/produtos`, { headers: getAuthHeaders() });
+                if (response.status === 403 || response.status === 401) { return showLogin(); }
+                if (!response.ok) throw new Error('Falha ao carregar produtos.');
+                
+                const products = await response.json();
+                productList.innerHTML = '';
+                productsMap = {};
+                
+                if (products.length === 0) {
+                     productList.innerHTML = '<p>Nenhum produto ativo no catálogo.</p>';
+                     return;
+                }
+
+                products.forEach(p => {
+                    productsMap[p.id] = p;
+                    const statusClass = p.estoque_disponivel ? 'status-available' : 'status-unavailable';
+                    const statusText = p.estoque_disponivel ? 'DISPONÍVEL' : 'INDISPONÍVEL';
+                    
+                    const item = document.createElement('div');
+                    item.className = 'product-item';
+                    item.innerHTML = `
+                        <div class="product-image-box">
+                            <img src="${p.imagem_url || 'https://placehold.co/100x100/f3f4f6/4B5563?text=PROD'}" alt="${p.nome_produto}" onerror="this.onerror=null;this.src='https://placehold.co/100x100/f3f4f6/4B5563?text=PROD';">
+                        </div>
+                        <div class="product-details">
+                            <h3>${p.nome_produto} (${p.codigo_produto})</h3>
+                            <p>${p.descricao || 'Sem descrição.'}</p>
+                            <span class="price-info">Preço Mínimo: ${formatCurrency(p.preco_minimo)}</span>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                            <p style="margin-top:5px; font-weight: 500; font-size:0.8rem;">Múltiplos de: ${p.multiplos_de}</p>
+                        </div>
+                        <div class="product-actions">
+                            <input type="number" min="${p.multiplos_de}" step="${p.multiplos_de}" value="${p.multiplos_de}" data-product-id="${p.id}" id="qty-${p.id}">
+                            <button class="btn btn-add-cart" data-id="${p.id}" onclick="addToCart(this.dataset.id)">Adicionar</button>
+                        </div>
+                    `;
+                    productList.appendChild(item);
+                });
+
+            } catch (error) {
+                console.error('Erro ao carregar catálogo:', error);
+                productList.innerHTML = '<p style="color:var(--status-rejected);">Erro ao carregar o catálogo de produtos.</p>';
+            }
+        }
+        
+        // --- CARRINHO (Mantido) ---
+        function loadCartFromStorage() {
+             const storedCart = localStorage.getItem('client_cart');
+             if (storedCart) {
+                try {
+                    cart = JSON.parse(storedCart);
+                } catch(e) {
+                    console.error("Erro ao carregar carrinho do storage.", e);
+                    cart = {};
+                }
+             }
+             updateCartUI();
+        }
+
+        function saveCartToStorage() {
+            localStorage.setItem('client_cart', JSON.stringify(cart));
+        }
+
+        window.addToCart = function(productId) {
+            const product = productsMap[productId];
+            if (!product) return;
+
+            const qtyInput = document.getElementById(`qty-${productId}`);
+            const quantity = parseInt(qtyInput.value) || product.multiplos_de;
+
+            if (quantity % product.multiplos_de !== 0 || quantity < product.multiplos_de) {
+                showCustomAlert(`A quantidade deve ser um múltiplo de ${product.multiplos_de} e maior ou igual a ele.`);
+                return;
+            }
+
+            if (cart[productId]) {
+                cart[productId].quantity += quantity;
+            } else {
+                cart[productId] = {
+                    details: {
+                        id: product.id,
+                        nome: product.nome_produto,
+                        codigo: product.codigo_produto,
+                        preco_unitario: product.preco_minimo,
+                        multiplos: product.multiplos_de,
+                        imagem_url: product.imagem_url
+                    },
+                    quantity: quantity
+                };
+            }
+
+            saveCartToStorage();
+            updateCartUI();
+            cartOverlay.classList.add('open');
+        }
+
+        window.removeFromCart = function(productId) {
+            delete cart[productId];
+            saveCartToStorage();
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            let total = 0;
+            let count = 0;
+            cartItemsContainer.innerHTML = '';
+
+            const productIds = Object.keys(cart);
+
+            if (productIds.length === 0) {
+                cartItemsContainer.innerHTML = '<p style="color: #6B7280; text-align: center;">Seu carrinho está vazio.</p>';
+                cartTotal.textContent = formatCurrency(0);
+                cartCount.textContent = 0;
+                checkoutBtn.disabled = true;
+                return;
+            }
+
+            productIds.forEach(id => {
+                const item = cart[id];
+                const itemTotal = item.details.preco_unitario * item.quantity;
+                total += itemTotal;
+                count += item.quantity;
+
+                const itemDiv = document.createElement('div');
+                itemDiv.className = 'cart-item';
+                itemDiv.innerHTML = `
+                    <div class="cart-item-details">
+                        <p><strong>${item.details.nome}</strong> (${item.details.codigo})</p>
+                        <p>${item.quantity} x ${formatCurrency(item.details.preco_unitario)} = ${formatCurrency(itemTotal)}</p>
+                    </div>
+                    <button class="btn btn-danger btn-action" onclick="removeFromCart(${id})"><i class="fas fa-trash"></i></button>
+                `;
+                cartItemsContainer.appendChild(itemDiv);
+            });
+
+            cartTotal.textContent = formatCurrency(total);
+            cartCount.textContent = productIds.length;
+            checkoutBtn.disabled = false;
+        }
+
+        openCartBtn.addEventListener('click', () => cartOverlay.classList.add('open'));
+        closeCartBtn.addEventListener('click', () => cartOverlay.classList.remove('open'));
+        
+        // --- CHECKOUT (Mantido) ---
+        checkoutBtn.addEventListener('click', async () => {
+            if (Object.keys(cart).length === 0) {
+                showCustomAlert('O carrinho está vazio.');
+                return;
+            }
+
+            showCustomConfirm('Deseja realmente finalizar o pedido? O valor final será confirmado pela nossa equipe.', async (confirmed) => {
+                if (!confirmed) return;
+
+                checkoutBtn.disabled = true;
+                checkoutBtn.textContent = 'Enviando...';
+
+                try {
+                    const orderData = {
+                        cliente_id: CLIENT_ID,
+                        itens: Object.values(cart).map(item => ({
+                            produto_id: item.details.id,
+                            quantidade: item.quantity,
+                            preco_unitario_registrado: item.details.preco_unitario 
+                        }))
+                    };
+
+                    const response = await fetch(`${API_BASE_URL}/api/cliente/pedidos`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify(orderData)
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        showCustomAlert(`Pedido #${data.pedido_id} criado com sucesso! Aguarde a aprovação e link de pagamento.`);
+                        cart = {};
+                        saveCartToStorage();
+                        updateCartUI();
+                        loadOrderHistory();
+                        switchView('pedidos');
+                    } else {
+                        showCustomAlert(data.erro || 'Falha ao finalizar pedido.');
+                    }
+                } catch (error) {
+                    showCustomAlert('Erro de conexão ao finalizar pedido.');
+                } finally {
+                    checkoutBtn.disabled = false;
+                    checkoutBtn.textContent = 'Finalizar Pedido';
+                    cartOverlay.classList.remove('open');
+                }
+            });
+        });
+
+        // --- HISTÓRICO DE PEDIDOS (Mantido) ---
+        async function loadOrderHistory(isDashboard = false) {
+            const tableBody = isDashboard ? document.querySelector('#last-orders-table tbody') : document.querySelector('#all-orders-table tbody');
+            const limit = isDashboard ? 5 : null;
+            
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Carregando histórico ${isDashboard ? 'recente' : 'completo'}...</td></tr>`;
+            
+            let statsPedidosAbertos = 0;
+            let statsPedidosProntos = 0;
+            let statsValorPendente = 0;
+
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/cliente/pedidos?cliente_id=${CLIENT_ID}`, { headers: getAuthHeaders() });
+                
+                if (response.status === 403 || response.status === 401) { return showLogin(); }
+                if (!response.ok) throw new Error('Falha ao carregar pedidos.');
+                
+                let orders = await response.json();
+                
+                if (isDashboard) {
+                    orders.forEach(o => {
+                        if (o.status_pedido.includes('Aguardando') || o.status_pedido.includes('Em Produção')) {
+                            statsPedidosAbertos++;
+                            statsValorPendente += parseFloat(o.valor_total);
+                        }
+                        if (o.status_pedido === 'Pronto para Retirada') {
+                            statsPedidosProntos++;
+                        }
+                    });
+
+                    document.getElementById('stat-pedidos-abertos').textContent = statsPedidosAbertos;
+                    document.getElementById('stat-pedidos-prontos').textContent = statsPedidosProntos;
+                    document.getElementById('stat-valor-total').textContent = formatCurrency(statsValorPendente);
+                    
+                    orders = orders.slice(0, 5);
+                }
+
+                tableBody.innerHTML = '';
+
+                if (orders.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Nenhum pedido ${isDashboard ? 'recente' : ''} encontrado.</td></tr>`;
+                    return;
+                }
+                
+                orders.forEach(o => {
+                    const statusClass = getStatusClass(o.status_pedido);
+                    const row = tableBody.insertRow();
+                    row.innerHTML = `
+                        <td>#${o.id}</td>
+                        <td>${o.data_criacao.substring(0, 10)}</td>
+                        <td>${formatCurrency(o.valor_total)}</td>
+                        <td><span class="status-badge ${statusClass}">${o.status_pedido}</span></td>
+                        <td><button class="btn-action" style="background:#555; color:white;" onclick="handleChatStatusCheck(${o.id})">Rastrear</button></td>
+                    `;
+                });
+                
+            } catch (error) {
+                console.error('Erro ao carregar histórico de pedidos:', error);
+                tableBody.innerHTML = '<tr><td colspan="5" style="color:var(--status-rejected); text-align: center;">Erro ao carregar histórico.</td></tr>';
+            }
+        }
+        
+        // --- FUNÇÃO CUSTOM ALERT/CONFIRM (Reuso do Admin) ---
+        // Adiciona o modal de diálogo ao body para ser usado pelas funções de alerta
+        const customDialogModal = document.createElement('div');
+        customDialogModal.id = 'custom-dialog-modal';
+        customDialogModal.className = 'modal-overlay';
+        customDialogModal.innerHTML = `
+            <div class="modal-content" style="max-width: 400px; text-align: center;">
+                <p id="dialog-message" style="margin-bottom: 1.5rem; color: var(--content-text); font-size: 1.1rem;"></p>
+                <div id="dialog-buttons" class="modal-buttons" style="justify-content: center;">
+                    <button type="button" class="btn btn-success" id="dialog-ok-btn">OK</button>
+                    <button type="button" class="btn btn-danger" id="dialog-cancel-btn" style="display:none;">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(customDialogModal);
+        
+        const dialogMessage = customDialogModal.querySelector('#dialog-message');
+        const dialogOkBtn = customDialogModal.querySelector('#dialog-ok-btn');
+        const dialogCancelBtn = customDialogModal.querySelector('#dialog-cancel-btn');
+        let confirmCallback = null;
+
+        window.showCustomAlert = function(message) {
+            dialogMessage.textContent = message;
+            dialogOkBtn.style.display = 'block';
+            dialogCancelBtn.style.display = 'none';
+            customDialogModal.style.display = 'flex';
+        }
+        window.showCustomConfirm = function(message, callback) {
+            dialogMessage.textContent = message;
+            dialogOkBtn.style.display = 'block';
+            dialogCancelBtn.style.display = 'block';
+            confirmCallback = callback;
+            customDialogModal.style.display = 'flex';
+        }
+
+        dialogOkBtn.addEventListener('click', () => {
+            customDialogModal.style.display = 'none';
+            if (dialogCancelBtn.style.display !== 'none' && confirmCallback) {
+                confirmCallback(true);
+                confirmCallback = null;
+            } else if (confirmCallback) {
+                confirmCallback = null;
+            }
+        });
+        
+        dialogCancelBtn.addEventListener('click', () => {
+            customDialogModal.style.display = 'none';
+            if (confirmCallback) {
+                confirmCallback(false);
+                confirmCallback = null;
+            }
+        });
+        
+        // --- NOVO: LÓGICA DO CHATBOT ELOBOT ---
+
+        let conversationHistory = []; // [ {role: 'user/bot', content: 'text'} ]
+        const previewMessages = [
+            "Olá! 👋 Posso te ajudar com um pedido ou orçamento?",
+            "Precisa de ajuda com o status do seu pedido?",
+            "Quer um link de pagamento rápido? Me peça!"
+        ];
+        let messageIndex = 0;
+        let previewInterval;
+        
+        function getCurrentTime() {
+            const now = new Date();
+            return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
+        
+        function addMessage(text, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            let formattedText = text.replace(/\n/g, '<br>');
+            formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            
+            conversationHistory.push({ 
+                role: isUser ? 'user' : 'bot', 
+                content: text // Usa 'content' para o histórico
+            });
+
+            messageDiv.innerHTML = `
+                <div class="message-avatar">
+                    <i class="fas fa-${isUser ? 'user' : 'robot'}"></i>
+                </div>
+                <div class="message-content">
+                    <div class="message-bubble">${formattedText}</div>
+                    <div class="message-time">${getCurrentTime()}</div>
+                </div>
+            `;
+            if (chatbotMessages) {
+                chatbotMessages.appendChild(messageDiv);
+                chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+            }
+        }
+        
+        function showTypingIndicator() {
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'message bot typing-message';
+            typingDiv.id = 'typing-indicator';
+            typingDiv.innerHTML = `
+                <div class="message-avatar"><i class="fas fa-robot"></i></div>
+                <div class="message-content">
+                    <div class="message-bubble">
+                        <div class="typing-indicator"><span></span><span></span><span></span></div>
+                    </div>
+                </div>
+            `;
+            if (chatbotMessages) {
+                chatbotMessages.appendChild(typingDiv);
+                chatbotMessages.scrollTop = chatbotMessages.scrollHeight;
+            }
+        }
+        
+        function removeTypingIndicator() {
+            const typingDiv = document.getElementById('typing-indicator');
+            if (typingDiv && typingDiv.parentNode) {
+                typingDiv.parentNode.removeChild(typingDiv);
+            }
+        }
+
+        // 1. Lógica Preview/Minimize
+        function minimizePreview() {
+            chatbotButton.classList.add('minimized');
+            minimizedIcon.classList.add('minimized');
+            clearInterval(previewInterval);
+        }
+        function maximizePreview() {
+            chatbotButton.classList.remove('minimized');
+            minimizedIcon.classList.remove('minimized');
+            startPreviewAnimation();
+        }
+        function startPreviewAnimation() {
+             if (previewInterval) clearInterval(previewInterval);
+             previewInterval = setInterval(() => {
+                messageIndex = (messageIndex + 1) % previewMessages.length;
+                previewMessageEl.style.opacity = 0;
+                setTimeout(() => {
+                    previewMessageEl.textContent = previewMessages[messageIndex];
+                    previewMessageEl.style.opacity = 1;
+                }, 300);
+            }, 4000);
+        }
+        
+        // 2. Abrir/Fechar chatbot
+        function toggleChat(e) {
+            if (e) e.preventDefault();
+            const isActive = chatbotWindow.classList.contains('active');
+            if (isActive) {
+                chatbotWindow.classList.remove('active');
+                chatbotButton.classList.remove('active');
+                minimizedIcon.classList.remove('active');
+                maximizePreview();
+            } else {
+                chatbotWindow.classList.add('active');
+                chatbotButton.classList.add('active');
+                minimizedIcon.classList.add('active');
+                minimizePreview(); // Garante que o preview suma ao abrir
+                setTimeout(() => {
+                    chatbotInput.focus();
+                }, 300);
+            }
+        }
+
+        // 3. Início da Sessão (Só executa uma vez ao logar)
+        function startChatbotSession() {
+            conversationHistory = [];
+            chatbotMessages.innerHTML = '';
+            
+            showTypingIndicator();
+            
+            // Mensagem de boas vindas com o nome do cliente
+            const clientName = localStorage.getItem('client_name') || 'Cliente';
+            const welcomeMessage = `Olá, **${clientName}**! Eu sou o ELO Bot, seu Agente Comercial Virtual da Elo Brindes. Como posso te ajudar hoje? (Ex: "Qual o status do pedido 123?" ou "Quero ver canetas")`;
+            
+            setTimeout(() => {
+                removeTypingIndicator();
+                addMessage(welcomeMessage, false);
+                maximizePreview(); // Inicia a animação da preview
+            }, 1000);
+        }
+        
+        // 4. Lógica de Envio de Mensagem
+        async function sendMessage() {
+            const messageText = chatbotInput.value.trim();
+            if (messageText === '' || chatbotSend.disabled) return;
+
+            addMessage(messageText, true); 
+            chatbotInput.value = '';
+            chatbotSend.disabled = true;
+            
+            showTypingIndicator();
+            
+            try {
+                const payload = {
+                    message: messageText,
+                    client_id: CLIENT_ID, // ID do cliente logado
+                    history: conversationHistory.slice(0, -1) // Exclui a última mensagem do usuário (que será enviada no campo 'message')
+                };
+
+                const response = await fetch(CHATBOT_API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.error || "Erro na API do chat.");
+                
+                removeTypingIndicator();
+                addMessage(result.response, false);
+
+            } catch (err) {
+                removeTypingIndicator();
+                console.error("Erro no Chatbot:", err);
+                addMessage(`Ocorreu um erro ao comunicar com a IA. Por favor, tente novamente mais tarde.`, false);
+            } finally {
+                chatbotSend.disabled = false;
+                chatbotInput.focus();
+            }
+        }
+        
+        // NOVO: Função para o botão Rastrear da tabela
+        window.handleChatStatusCheck = function(orderId) {
+            toggleChat(); // Abre o chatbot
+            setTimeout(() => {
+                chatbotInput.value = `Qual o status do pedido ${orderId}?`;
+                sendMessage();
+            }, 500);
+        }
+
+        // --- Listeners do Chatbot ---
+        if (chatbotButton) chatbotButton.addEventListener('click', toggleChat);
+        if (chatbotClose) chatbotClose.addEventListener('click', toggleChat);
+        if (previewClose) previewClose.addEventListener('click', function(e) { e.stopPropagation(); minimizePreview(); });
+        if (minimizedIcon) minimizedIcon.addEventListener('click', toggleChat);
+        
+        if (chatbotSend) chatbotSend.addEventListener('click', sendMessage);
+        if (chatbotInput) chatbotInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+        
+    </script>
+</body>
+</html>
