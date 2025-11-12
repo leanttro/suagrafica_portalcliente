@@ -18,7 +18,8 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}) 
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# 💡 ATENÇÃO: Verifique se sua variável de ambiente está configurada
+DATABASE_URL = os.environ.get("DATABASE_URL") 
 ADMIN_SESSIONS = {}
 
 def get_db_connection():
@@ -74,7 +75,7 @@ def setup_database():
             id SERIAL PRIMARY KEY,
             cliente_id INTEGER REFERENCES suagrafica_clientes(id) ON DELETE RESTRICT,
             valor_total DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-            status_pedido VARCHAR(50) DEFAULT 'Aguardando Pagamento',
+            status_pedido VARCHAR(50) DEFAULT 'Aguardando Aprovação',
             link_pagamento VARCHAR(255),
             path_comprovante VARCHAR(255),
             data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -478,7 +479,7 @@ def cliente_pedidos():
                 return jsonify({"erro": "ID do Cliente necessário para ver pedidos"}), 400
             
             try:
-                # 💡 CORREÇÃO DO ERRO 500: Converte o ID de string (URL param) para inteiro
+                # 💡 CORREÇÃO CRÍTICA DO ERRO 500: Converte o ID de string (URL param) para inteiro
                 cliente_id = int(cliente_id_from_url)
             except ValueError:
                 return jsonify({"erro": "ID do Cliente inválido."}), 400

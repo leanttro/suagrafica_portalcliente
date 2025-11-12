@@ -227,6 +227,14 @@
         .status-available { background-color: #D1FAE5; color: var(--status-available); }
         .status-unavailable { background-color: #FEE2E2; color: var(--status-rejected); }
         
+        /* 💡 NOVOS ESTILOS PARA OS STATUS DE PEDIDO */
+        .status-AguardandoAprovação { background-color: #FEF3C7; color: #D97706; } /* Amarelo */
+        .status-AguardandoPagamento { background-color: #DBEAFE; color: #3B82F6; } /* Azul Claro */
+        .status-Pago { background-color: #D1FAE5; color: #065F46; } /* Verde Claro */
+        .status-EmProdução { background-color: #E5E7EB; color: #6B7280; } /* Cinza */
+        .status-ProntoparaRetirada, .status-Concluído { background-color: #D1FAE5; color: #065F46; }
+        .status-Cancelado, .status-Rejeitado { background-color: #FEE2E2; color: #EF4444; }
+
         .product-actions {
             display: flex;
             flex-direction: column;
@@ -268,8 +276,7 @@
             color: var(--content-text);
         }
         .orders-table th { background-color: #F9FAFB; color: #4B5563; font-weight: 600; font-size: 0.9rem; }
-        .status-Pedido-Aberto { background-color: #FEF3C7; color: #D97706; }
-        .status-Pedido-Pago { background-color: #D1FAE5; color: #065F46; }
+        
 
         /* --- FOOTER (Abaixo do Nav) --- */
         .sidebar-footer {
@@ -529,6 +536,22 @@
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
         }
+        
+        // 💡 FUNÇÃO CORRIGIDA PARA MAPEAMENTO DE STATUS
+        function getStatusClass(status) {
+            const statusKey = status.replace(/\s/g, ''); 
+            const statusMap = {
+                'AguardandoAprovação': 'status-AguardandoAprovação',
+                'AguardandoPagamento': 'status-AguardandoPagamento',
+                'Pago': 'status-Pago',
+                'EmProdução': 'status-EmProdução',
+                'ProntoparaRetirada': 'status-ProntoparaRetirada',
+                'Concluído': 'status-Concluído',
+                'Cancelado': 'status-Cancelado',
+                'Rejeitado': 'status-Rejeitado',
+            };
+            return statusMap[statusKey] || 'status-EmProdução'; 
+        }
 
         // --- Lógica de View (Troca de Painel) ---
         function switchView(viewId) {
@@ -632,6 +655,8 @@
         // --- DASHBOARD ---
         async function loadDashboardStats() {
             // Lógica para carregar estatísticas e últimos pedidos
+            // Adicionado carregamento do dashboard para ser consistente
+            loadOrderHistory(true); // Carrega os últimos pedidos no dashboard
         }
 
         // --- CATÁLOGO DE PRODUTOS ---
@@ -683,7 +708,7 @@
             }
         }
         
-        // --- CARRINHO ---
+        // --- CARRINHO (Mantido) ---
         function loadCartFromStorage() {
              const storedCart = localStorage.getItem('client_cart');
              if (storedCart) {
@@ -782,7 +807,7 @@
         openCartBtn.addEventListener('click', () => cartOverlay.classList.add('open'));
         closeCartBtn.addEventListener('click', () => cartOverlay.classList.remove('open'));
         
-        // --- CHECKOUT ---
+        // --- CHECKOUT (Mantido) ---
         checkoutBtn.addEventListener('click', async () => {
             if (Object.keys(cart).length === 0) {
                 showCustomAlert('O carrinho está vazio.');
@@ -833,27 +858,59 @@
             });
         });
 
-        // --- HISTÓRICO DE PEDIDOS ---
-        async function loadOrderHistory() {
-            const tableBody = document.querySelector('#all-orders-table tbody');
-            tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando histórico completo...</td></tr>';
+        // --- HISTÓRICO DE PEDIDOS (CORRIGIDO) ---
+        async function loadOrderHistory(isDashboard = false) {
+            const tableBody = isDashboard ? document.querySelector('#last-orders-table tbody') : document.querySelector('#all-orders-table tbody');
+            const limit = isDashboard ? 5 : null; // Limitar a 5 para o dashboard
+            
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Carregando histórico ${isDashboard ? 'recente' : 'completo'}...</td></tr>`;
+            
+            let statsPedidosAbertos = 0;
+            let statsPedidosProntos = 0;
+            let statsValorPendente = 0;
+
 
             try {
-                // CORREÇÃO CRÍTICA: Passando CLIENT_ID como parâmetro de URL
+                // 💡 CORREÇÃO: Endpoint correto do app.py usa o CLIENT_ID
                 const response = await fetch(`${API_BASE_URL}/api/cliente/pedidos?cliente_id=${CLIENT_ID}`, { headers: getAuthHeaders() });
+                
+                // Trata o erro 403/401
                 if (response.status === 403 || response.status === 401) { return showLogin(); }
+                // Trata o erro 500 ou qualquer outro erro de rede/API.
                 if (!response.ok) throw new Error('Falha ao carregar pedidos.');
                 
-                const orders = await response.json();
+                let orders = await response.json();
+                
+                // Se for o dashboard, calcular as stats
+                if (isDashboard) {
+                    orders.forEach(o => {
+                        // Lógica de status para estatísticas
+                        if (o.status_pedido.includes('Aguardando') || o.status_pedido.includes('Em Produção')) {
+                            statsPedidosAbertos++;
+                            statsValorPendente += parseFloat(o.valor_total);
+                        }
+                        if (o.status_pedido === 'Pronto para Retirada') {
+                            statsPedidosProntos++;
+                        }
+                    });
+
+                    document.getElementById('stat-pedidos-abertos').textContent = statsPedidosAbertos;
+                    document.getElementById('stat-pedidos-prontos').textContent = statsPedidosProntos;
+                    document.getElementById('stat-valor-total').textContent = formatCurrency(statsValorPendente);
+                    
+                    orders = orders.slice(0, 5);
+                }
+
                 tableBody.innerHTML = '';
 
                 if (orders.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum pedido encontrado.</td></tr>';
+                    tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Nenhum pedido ${isDashboard ? 'recente' : ''} encontrado.</td></tr>`;
                     return;
                 }
                 
                 orders.forEach(o => {
-                    const statusClass = o.status_pedido.includes('Aguardando') ? 'status-Pedido-Aberto' : 'status-Pedido-Pago';
+                    // 💡 CORREÇÃO: Usa a nova função de status
+                    const statusClass = getStatusClass(o.status_pedido);
                     const row = tableBody.insertRow();
                     row.innerHTML = `
                         <td>#${o.id}</td>
