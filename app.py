@@ -11,14 +11,14 @@ import traceback
 
 # ======================================================================
 # API BACKEND - [SUA GRÁFICA] B2B PORTAL
-# Versão: 1.4 (Correção do 500 de Pedidos e Adição do CRUD de Pedidos Admin)
+# Versão: 1.5 (Correção do JSONDecodeError no GET de Pedidos)
 # ======================================================================
 
 load_dotenv()
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}}) 
 
-# 💡 ATENÇÃO: Verifique se sua variável de ambiente está configurada
+# 💡 ATENÇÃO: Verifique se sua variável de ambiente DATABASE_URL está configurada
 DATABASE_URL = os.environ.get("DATABASE_URL") 
 ADMIN_SESSIONS = {}
 
@@ -113,11 +113,8 @@ def check_auth(request):
     if not token: return None
     token = token.replace('Bearer ', '')
     
-    # --- [CORREÇÃO CRÍTICA] ---
-    # Aceita os tokens forçados que colocamos no index.html
-    # Assim o painel carrega os dados mesmo sem login real na API
+    # Aceita os tokens forçados para que o painel admin carregue
     if token in ['FORCED_LEANDRO_TOKEN', 'FORCED_TESTE_TOKEN']:
-        # Tenta pegar qualquer ID de admin válido no banco para atribuir a autoria
         conn = get_db_connection()
         try:
             cur = conn.cursor()
@@ -125,18 +122,14 @@ def check_auth(request):
             admin = cur.fetchone()
             return admin[0] if admin else 1
         except:
-            return 1 # Fallback se der erro no banco
+            return 1 
         finally:
             if conn: conn.close()
-    # --------------------------
 
     return ADMIN_SESSIONS.get(token)
 
 def check_client_auth(request):
-    """
-    Função simples para verificar se existe um token no header do cliente,
-    simulando uma sessão válida.
-    """
+    """ Verifica a presença do token do cliente. """
     token = request.headers.get('Authorization')
     if not token: 
         return False
@@ -145,7 +138,6 @@ def check_client_auth(request):
 @app.route('/api/admin/login', methods=['POST'])
 def login_admin():
     data = request.json or {}
-    # .strip() remove espaços em branco antes/depois que atrapalham o login
     username = data.get('username', '').strip()
     chave_admin = data.get('chave_admin', '').strip()
 
@@ -156,7 +148,6 @@ def login_admin():
     try:
         cur = conn.cursor()
         
-        # CORREÇÃO: Busca ignorando maiúsculas/minúsculas (LOWER)
         cur.execute("""
             SELECT id, username, chave_admin 
             FROM suagrafica_admin 
@@ -165,7 +156,6 @@ def login_admin():
         
         admin = cur.fetchone()
         
-        # Verifica se achou E se a senha bate
         if admin and admin[2] == chave_admin:
             token = str(uuid.uuid4())
             ADMIN_SESSIONS[token] = admin[0]
@@ -175,7 +165,6 @@ def login_admin():
     finally:
         if conn: conn.close()
 
-# NOVO: Rota de Login do Cliente (B2B)
 @app.route('/api/cliente/login', methods=['POST'])
 def login_cliente():
     data = request.json or {}
@@ -202,7 +191,6 @@ def login_cliente():
             if status_acesso != 'Ativo':
                 return jsonify({"erro": "Seu acesso está inativo. Contate o suporte."}), 401
                 
-            # Cria um token de sessão simples
             cliente_token = hashlib.sha256(f"{cliente_id}:{uuid.uuid4()}".encode()).hexdigest()
             
             return jsonify({
@@ -369,14 +357,13 @@ def admin_delete_admin(id):
     finally:
         if conn: conn.close()
 
-# NOVO: Rotas de Pedidos para o Painel Admin
+# Rotas de Pedidos para o Painel Admin
 @app.route('/api/admin/pedidos', methods=['GET'])
 def admin_listar_pedidos():
     if not check_auth(request): return jsonify({"erro": "Não autorizado"}), 403
     conn = get_db_connection()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        # Traz todos os pedidos junto com o nome do cliente que o criou
         cur.execute("""
             SELECT p.id, c.nome_cliente, p.valor_total, p.status_pedido, p.data_criacao
             FROM suagrafica_pedidos p
@@ -400,7 +387,6 @@ def admin_crud_pedido_by_id(id):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         
         if request.method == 'GET':
-            # Detalhes do Pedido
             cur.execute("""
                 SELECT p.id, c.nome_cliente, p.cliente_id, p.valor_total, p.status_pedido, p.link_pagamento, p.path_comprovante, p.data_criacao
                 FROM suagrafica_pedidos p
@@ -411,7 +397,6 @@ def admin_crud_pedido_by_id(id):
             
             if not pedido: return jsonify({"erro": "Pedido não encontrado"}), 404
 
-            # Itens do Pedido
             cur.execute("""
                 SELECT pi.quantidade, pi.preco_unitario_registrado, pr.nome_produto, pr.codigo_produto
                 FROM suagrafica_pedido_itens pi
@@ -427,7 +412,6 @@ def admin_crud_pedido_by_id(id):
 
         elif request.method == 'PUT':
             data = request.json or {}
-            # Permite atualizar status e link de pagamento
             cur.execute("""
                 UPDATE suagrafica_pedidos 
                 SET status_pedido = %s, link_pagamento = %s, valor_total = %s 
@@ -454,7 +438,6 @@ def cliente_produtos():
     conn = get_db_connection()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        # Filtra apenas produtos ativos e disponíveis
         cur.execute("SELECT * FROM suagrafica_produtos WHERE esta_ativo = TRUE AND estoque_disponivel = TRUE ORDER BY nome_produto")
         produtos = cur.fetchall()
         for p in produtos: 
@@ -470,21 +453,20 @@ def cliente_pedidos():
     
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        data = request.json or {}
         
+        # 💡 CORREÇÃO CRÍTICA: Lógica separada para GET e POST
         if request.method == 'GET':
-            # Obtém cliente_id dos parâmetros da URL
+            # Não tenta ler JSON. Apenas lê o parâmetro da URL.
             cliente_id_from_url = request.args.get('cliente_id')
             if not cliente_id_from_url:
                 return jsonify({"erro": "ID do Cliente necessário para ver pedidos"}), 400
             
             try:
-                # 💡 CORREÇÃO CRÍTICA DO ERRO 500: Converte o ID de string (URL param) para inteiro
+                # 💡 Correção do erro 500 original
                 cliente_id = int(cliente_id_from_url)
             except ValueError:
                 return jsonify({"erro": "ID do Cliente inválido."}), 400
             
-            # Busca pedidos apenas do cliente logado
             cur.execute("""
                 SELECT id, valor_total, status_pedido, data_criacao 
                 FROM suagrafica_pedidos 
@@ -498,23 +480,23 @@ def cliente_pedidos():
             return jsonify(pedidos)
             
         elif request.method == 'POST':
+            # 💡 APENAS AQUI LER O JSON
+            data = request.json or {}
+            
             cliente_id = data.get('cliente_id')
             itens = data.get('itens', [])
             
             if not cliente_id or not itens:
                 return jsonify({"erro": "Dados do pedido incompletos"}), 400
 
-            # Calcula o valor total no backend
             valor_total = sum(float(item['preco_unitario_registrado']) * item['quantidade'] for item in itens)
             
-            # Cria o novo pedido
             cur.execute("""
                 INSERT INTO suagrafica_pedidos (cliente_id, valor_total, status_pedido)
                 VALUES (%s, %s, %s) RETURNING id
             """, (cliente_id, valor_total, 'Aguardando Aprovação'))
             pedido_id = cur.fetchone()['id']
             
-            # Adiciona os itens do pedido
             item_values = [(pedido_id, item['produto_id'], item['quantidade'], item['preco_unitario_registrado']) for item in itens]
             psycopg2.extras.execute_values(
                 cur,
